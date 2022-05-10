@@ -116,23 +116,27 @@ FStartupScreen *FStartupScreen::CreateInstance(int max_progress)
 
 	if (!Args->CheckParm("-nostartup"))
 	{
-		if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
+		FStartScreen* gscr = nullptr;
+		try
 		{
-			scr = new FHexenStartupScreen(max_progress, hr);
+			if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
+			{
+				gscr = new FHexenStartupScreen(max_progress, InvalidateRect);
+			}
+			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
+			{
+				gscr = new FHereticStartupScreen(max_progress, InvalidateRect);
+			}
+			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
+			{
+				gscr = new FStrifeStartupScreen(max_progress, InvalidateRect);
+			}
+			scr = new FGraphicalStartupScreen(gscr,max_progress);
 		}
-		else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
+		catch(const CRecoverableError& e)
 		{
-			scr = new FHereticStartupScreen(max_progress, hr);
-		}
-		else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
-		{
-			scr = new FStrifeStartupScreen(max_progress, hr);
-		}
-		if (scr != NULL && FAILED(hr))
-		{
-			delete scr;
-			scr = NULL;
-		}
+			// fall through to the basic startup screen
+		}		
 	}
 	if (scr == NULL)
 	{
@@ -434,9 +438,10 @@ static INT_PTR CALLBACK NetStartPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LP
 //
 //==========================================================================
 
-FGraphicalStartupScreen::FGraphicalStartupScreen(int max_progress)
+FGraphicalStartupScreen::FGraphicalStartupScreen(FStartScreen* gscr, int max_progress)
 : FBasicStartupScreen(max_progress, false)
 {
+	GameScreen = gscr;
 }
 
 //==========================================================================
@@ -452,11 +457,6 @@ FGraphicalStartupScreen::~FGraphicalStartupScreen()
 		DestroyWindow (StartupScreen);
 		StartupScreen = NULL;
 	}
-	if (StartupBitmap != NULL)
-	{
-		ST_Util_FreeBitmap (StartupBitmap);
-		StartupBitmap = NULL;
-	}
 }
 
 //==========================================================================
@@ -465,38 +465,87 @@ FGraphicalStartupScreen::~FGraphicalStartupScreen()
 //
 //==========================================================================
 
-void FHexenStartupScreen::SetWindowSize()
+void FGraphicalStartupScreen::SetWindowSize()
 {
-	ST_Util_SizeWindowForBitmap(1);
+	ST_Util_SizeWindowForBitmap(GameScreen->GetBitmap(), GameScreen->GetScale());
 	LayoutMainWindow(Window, NULL);
 	InvalidateRect(StartupScreen, NULL, TRUE);
 }
 
+
 //==========================================================================
 //
+// FHexenStartupScreen :: NetProgress
 //
+// Draws the red net noches in addition to the normal progress bar.
 //
 //==========================================================================
 
-void FHereticStartupScreen::SetWindowSize()
+void FGraphicalStartupScreen::NetProgress(int count)
 {
-	ST_Util_SizeWindowForBitmap(1);
-	LayoutMainWindow(Window, NULL);
-	InvalidateRect(StartupScreen, NULL, TRUE);
+	GameScreen->NetProgress(count);
+	FBasicStartupScreen::NetProgress(count);
+	I_GetEvent();
+}
+
+
+//==========================================================================
+//
+// FHereticStartupScreen :: LoadingStatus
+//
+// Prints text in the center box of the startup screen.
+//
+//==========================================================================
+
+void FGraphicalStartupScreen::LoadingStatus(const char* message, int colors)
+{
+	GameScreen->LoadingStatus(message, colors);
+	I_GetEvent();
 }
 
 //==========================================================================
 //
+// FHereticStartupScreen :: AppendStatusLine
 //
+// Appends text to Heretic's status line.
 //
 //==========================================================================
 
-void FStrifeStartupScreen::SetWindowSize()
+void FGraphicalStartupScreen::AppendStatusLine(const char* status)
 {
-	ST_Util_SizeWindowForBitmap(2);
-	LayoutMainWindow(Window, NULL);
-	InvalidateRect(StartupScreen, NULL, TRUE);
+	GameScreen->AppendStatusLine(status);
+	I_GetEvent();
 }
+
+
+//==========================================================================
+//
+// FStrifeStartupScreen :: Progress
+//
+// Bumps the progress meter one notch.
+//
+//==========================================================================
+
+void FGraphicalStartupScreen::Progress()
+{
+	if (!GameScreen->Progress()) FBasicStartupScreen::Progress();
+	I_GetEvent();
+}
+
+//==========================================================================
+//
+// FBasicStartupScreen :: NetDone
+//
+// Removes the network startup pane.
+//
+//==========================================================================
+
+void FGraphicalStartupScreen::NetDone()
+{
+	GameScreen->NetDone();
+	FBasicStartupScreen::NetDone();
+}
+
 
 //==========================================================================
 //
@@ -634,7 +683,7 @@ bool ST_Util_CreateStartupWindow ()
 //
 //==========================================================================
 
-void ST_Util_SizeWindowForBitmap (int scale)
+void ST_Util_SizeWindowForBitmap (BiotmapInfo* StartupBitmap, int scale)
 {
 	DEVMODE displaysettings;
 	int w, h, cx, cy, x, y;

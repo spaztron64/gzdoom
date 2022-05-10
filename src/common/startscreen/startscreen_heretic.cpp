@@ -56,7 +56,7 @@ public:
 	FHereticStartScreen(int max_progress, InvalidateRectFunc& inv);
 	~FHereticStartScreen()  { FreeBitmap(StartupBitmap); }
 
-	void Progress() override;
+	bool Progress() override;
 	void LoadingStatus(const char *message, int colors) override;
 	void AppendStatusLine(const char *status) override;
 	BitmapInfo* GetBitmap() override { return StartupBitmap; }
@@ -114,7 +114,7 @@ FHereticStartScreen::FHereticStartScreen(int max_progress, InvalidateRectFunc& i
 //
 //==========================================================================
 
-void FHereticStartScreen::Progress()
+bool FHereticStartScreen::Progress()
 {
 	if (CurPos < MaxPos)
 	{
@@ -130,6 +130,7 @@ void FHereticStartScreen::Progress()
 			NotchPos = notch_pos;
 		}
 	}
+	return true;
 }
 
 //==========================================================================

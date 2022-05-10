@@ -66,7 +66,7 @@ public:
 	FHexenStartScreen(int max_progress, InvalidateRectFunc& inv);
 	~FHexenStartScreen();
 
-	void Progress() override;
+	bool Progress() override;
 	void NetProgress(int count) override;
 	void NetDone() override;
 	BitmapInfo* GetBitmap() override { return StartupBitmap; }
@@ -172,7 +172,7 @@ FHexenStartScreen::~FHexenStartScreen()
 //
 //==========================================================================
 
-void FHexenStartScreen::Progress()
+bool FHexenStartScreen::Progress()
 {
 	int notch_pos, x, y;
 
@@ -191,6 +191,7 @@ void FHexenStartScreen::Progress()
 			ST_Sound("StartupTick");
 		}
 	}
+	return true;
 }
 
 //==========================================================================

@@ -76,14 +76,16 @@ class FStartScreen
 protected:
 	int CurPos = 0;
 	int MaxPos;
+	int Scale = 1;
 	InvalidateRectFunc InvalidateRect;
 public:
 	FStartScreen(int maxp, InvalidateRectFunc inv) { MaxPos = maxp; InvalidateRect = inv; }
 	virtual ~FStartScreen() = default;
-	virtual void Progress() 
+	virtual bool Progress()
 	{
 		if (CurPos < MaxPos)
 			++CurPos;
+		return false;
 	}
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
@@ -93,6 +95,7 @@ public:
 	virtual void NetDone() {}
 	virtual void NetTick() {}
 	virtual BitmapInfo* GetBitmap() { return nullptr; }
+	int GetScale() const { return Scale; }
 	
 protected:
 	void PlanarToChunky4(uint8_t* dest, const uint8_t* src, int width, int height);

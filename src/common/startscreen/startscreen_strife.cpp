@@ -78,7 +78,7 @@ public:
 	FStrifeStartScreen(int max_progress, InvalidateRectFunc& inv);
 	~FStrifeStartScreen();
 
-	void Progress() override;
+	bool Progress() override;
 protected:
 	void DrawStuff(int old_laser, int new_laser);
 
@@ -145,6 +145,7 @@ FStrifeStartScreen::FStrifeStartScreen(int max_progress, InvalidateRectFunc& inv
 
 	// Make the startup image appear.
 	DrawStuff(0, 0);
+	Scale = 2;
 }
 
 //==========================================================================
@@ -175,7 +176,7 @@ FStrifeStartScreen::~FStrifeStartScreen()
 //
 //==========================================================================
 
-void FStrifeStartScreen::Progress()
+bool FStrifeStartScreen::Progress()
 {
 	int notch_pos;
 
@@ -189,6 +190,7 @@ void FStrifeStartScreen::Progress()
 			NotchPos = notch_pos;
 		}
 	}
+	return true;
 }
 
 //==========================================================================
