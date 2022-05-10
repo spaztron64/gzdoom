@@ -38,6 +38,9 @@
 #include "palutil.h"
 #include "v_font.h"
 #include "i_interface.h"
+#include "startupinfo.h"
+#include "m_argv.h"
+#include "engineerrors.h"
 
 // Text mode color values
 enum{
@@ -326,6 +329,37 @@ static const uint16_t IBM437ToUnicode[] = {
 	0x00a0, //#NO-BREAK SPACE
 };
 
+FStartScreen* CreateHexenStartScreen(int max_progress, InvalidateRectFunc& func);
+FStartScreen* CreateHereticStartScreen(int max_progress, InvalidateRectFunc& func);
+FStartScreen* CreateStrifeStartScreen(int max_progress, InvalidateRectFunc& func);
+
+
+FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& InvalidateRect)
+{
+	if (!Args->CheckParm("-nostartup"))
+	{
+		try
+		{
+			if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
+			{
+				return CreateHexenStartScreen(max_progress, InvalidateRect);
+			}
+			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
+			{
+				return CreateHereticStartScreen(max_progress, InvalidateRect);
+			}
+			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
+			{
+				return CreateStrifeStartScreen(max_progress, InvalidateRect);
+			}
+		}
+		catch(const CRecoverableError& e)
+		{
+			// fall through to the basic startup screen
+		}
+	}
+	return nullptr;
+}
 
 //==========================================================================
 //

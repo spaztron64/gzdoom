@@ -174,7 +174,7 @@ void FHereticStartScreen::AppendStatusLine(const char* status)
 }
 
 
-FStartScreen* CreateHereticStartScreem(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateHereticStartScreen(int max_progress, InvalidateRectFunc& func)
 {
 	return new FHereticStartScreen(max_progress, func);
 }

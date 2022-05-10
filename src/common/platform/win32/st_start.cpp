@@ -108,39 +108,20 @@ CUSTOM_CVAR(Int, showendoom, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 // Sets the size of the progress bar and displays the startup screen.
 //
 //==========================================================================
+FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& InvalidateRect);
 
 FStartupScreen *FStartupScreen::CreateInstance(int max_progress)
 {
 	FStartupScreen *scr = NULL;
 	HRESULT hr = -1;
-
-	if (!Args->CheckParm("-nostartup"))
-	{
-		FStartScreen* gscr = nullptr;
-		try
-		{
-			if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
-			{
-				gscr = new FHexenStartupScreen(max_progress, InvalidateRect);
-			}
-			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
-			{
-				gscr = new FHereticStartupScreen(max_progress, InvalidateRect);
-			}
-			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
-			{
-				gscr = new FStrifeStartupScreen(max_progress, InvalidateRect);
-			}
-			scr = new FGraphicalStartupScreen(gscr,max_progress);
-		}
-		catch(const CRecoverableError& e)
-		{
-			// fall through to the basic startup screen
-		}		
-	}
-	if (scr == NULL)
+	auto gscr = GetGameStartScreen(max_progress, InvalidateRect);
+	if (gscr == NULL)
 	{
 		scr = new FBasicStartupScreen(max_progress, true);
+	}
+	else
+	{
+		scr = new FGraphicalStartupScreen(gscr, max_progress);
 	}
 	return scr;
 }

@@ -234,7 +234,7 @@ void FStrifeStartScreen::DrawStuff(int old_laser, int new_laser)
 }
 
 
-FStartScreen* CreateStrifeStartScreem(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateStrifeStartScreen(int max_progress, InvalidateRectFunc& func)
 {
 	return new FStrifeStartScreen(max_progress, func);
 }

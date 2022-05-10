@@ -235,7 +235,7 @@ void FHexenStartScreen::NetDone()
 }
 
 
-FStartScreen* CreateHexenStartScreem(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateHexenStartScreen(int max_progress, InvalidateRectFunc& func)
 {
 	return new FHexenStartScreen(max_progress, func);
 }
