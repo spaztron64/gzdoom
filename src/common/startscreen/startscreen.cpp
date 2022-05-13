@@ -354,7 +354,7 @@ FStartScreen* GetGameStartScreen(int max_progress)
 				return CreateStrifeStartScreen(max_progress);
 			}
 		}
-		catch(const CRecoverableError& e)
+		catch(const CRecoverableError&)
 		{
 			// fall through to the basic startup screen
 		}

@@ -127,7 +127,7 @@ HWND			Window;
 
 // The subwindows used for startup and error output
 HWND			ConWindow, GameTitleWindow;
-HWND			ErrorPane, ProgressBar, NetStartPane, StartupScreen, ErrorIcon;
+HWND			ErrorPane, ProgressBar, NetStartPane, ErrorIcon;
 
 HFONT			GameTitleFont;
 LONG			GameTitleFontHeight;
@@ -306,20 +306,9 @@ void LayoutMainWindow (HWND hWnd, HWND pane)
 		leftside = GetSystemMetrics (SM_CXICON) + 6;
 		MoveWindow (ErrorIcon, 0, bannerheight, leftside, h - bannerheight - errorpaneheight - progressheight - netpaneheight, TRUE);
 	}
-	// If there is a startup screen, it covers the log window
-	if (StartupScreen != NULL)
-	{
-		SetWindowPos (StartupScreen, HWND_TOP, leftside, bannerheight, w - leftside,
-			h - bannerheight - errorpaneheight - progressheight - netpaneheight, SWP_SHOWWINDOW);
-		InvalidateRect (StartupScreen, NULL, FALSE);
-		MoveWindow (ConWindow, 0, 0, 0, 0, TRUE);
-	}
-	else
-	{
-		// The log window uses whatever space is left.
-		MoveWindow (ConWindow, leftside, bannerheight, w - leftside,
-			h - bannerheight - errorpaneheight - progressheight - netpaneheight, TRUE);
-	}
+	// The log window uses whatever space is left.
+	MoveWindow (ConWindow, leftside, bannerheight, w - leftside,
+		h - bannerheight - errorpaneheight - progressheight - netpaneheight, TRUE);
 }
 
 
@@ -464,35 +453,6 @@ LRESULT CALLBACK LConProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			TextOutW (drawitem->hDC, rect.left + (rect.right - rect.left - size.cx) / 2, 2, widename.c_str(), (int)widename.length());
 			SelectObject (drawitem->hDC, oldfont);
 			return TRUE;
-		}
-		// Draw startup screen
-		else if (wParam == IDC_STATIC_STARTUP)
-		{
-			if (StartupScreen != NULL)
-			{
-				drawitem = (LPDRAWITEMSTRUCT)lParam;
-
-				rect = drawitem->rcItem;
-				// Windows expects DIBs to be bottom-up but ours is top-down,
-				// so flip it vertically while drawing it.
-				StretchDIBits (drawitem->hDC, rect.left, rect.bottom - 1, rect.right - rect.left, rect.top - rect.bottom,
-					0, 0, StartupBitmap->bmiHeader.biWidth, StartupBitmap->bmiHeader.biHeight,
-					ST_Util_BitsForBitmap(StartupBitmap), reinterpret_cast<const BITMAPINFO*>(StartupBitmap), DIB_RGB_COLORS, SRCCOPY);
-
-				// If the title banner is gone, then this is an ENDOOM screen, so draw a short prompt
-				// where the command prompt would have been in DOS.
-				if (GameTitleWindow == NULL)
-				{
-					auto quitmsg = WideString(GStrings("TXT_QUITENDOOM"));
-
-					SetTextColor (drawitem->hDC, RGB(240,240,240));
-					SetBkMode (drawitem->hDC, TRANSPARENT);
-					oldfont = SelectObject (drawitem->hDC, (HFONT)GetStockObject (DEFAULT_GUI_FONT));
-					TextOutW (drawitem->hDC, 3, drawitem->rcItem.bottom - DefaultGUIFontHeight - 3, quitmsg.c_str(), (int)quitmsg.length());
-					SelectObject (drawitem->hDC, oldfont);
-				}
-				return TRUE;
-			}
 		}
 		// Draw stop icon.
 		else if (wParam == IDC_ICONPIC)

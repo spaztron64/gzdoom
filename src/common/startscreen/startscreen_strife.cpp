@@ -106,7 +106,6 @@ FStrifeStartScreen::FStrifeStartScreen(int max_progress)
 	// at this point we do not have a working texture manager yet, so we have to do the lookup via the file system
 
 	int startup_lump = fileSystem.CheckNumForName("STARTUP0");
-	int i;
 
 	if (startup_lump < 0)
 	{
@@ -119,7 +118,6 @@ FStrifeStartScreen::FStrifeStartScreen(int max_progress)
 	for (size_t i = 0; i < countof(StrifeStartupPicNames); ++i)
 	{
 		int lumpnum = fileSystem.CheckNumForName(StrifeStartupPicNames[i]);
-		int lumplen;
 
 		if (lumpnum >= 0)
 		{

@@ -1,3 +1,5 @@
+#pragma once
+
 class FStartupScreen
 {
 public:
@@ -44,21 +46,6 @@ protected:
 };
 
 class FStartScreen;
-
-class FGraphicalStartupScreen : public FBasicStartupScreen
-{
-	FStartScreen* GameScreen = nullptr;
-public:
-	FGraphicalStartupScreen(FStartScreen* scrn, int max_progress);
-	~FGraphicalStartupScreen();
-
-	void Progress() override;
-	void NetProgress(int count) override;
-	void NetDone() override;
-	void AppendStatusLine(const char* status) override;
-	void LoadingStatus(const char* message, int colors) override;
-
-};
 
 extern FStartupScreen *StartScreen;
 

@@ -72,8 +72,6 @@ void LayoutMainWindow (HWND hWnd, HWND pane);
 int LayoutNetStartPane (HWND pane, int w);
 
 bool ST_Util_CreateStartupWindow ();
-void ST_Util_SizeWindowForBitmap (int scale);
-void ST_Util_InvalidateRect (HWND hwnd, BitmapInfo *bitmap_info, int left, int top, int right, int bottom);
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
 
@@ -114,15 +112,7 @@ FStartupScreen *FStartupScreen::CreateInstance(int max_progress)
 {
 	FStartupScreen *scr = NULL;
 	HRESULT hr = -1;
-	auto gscr = GetGameStartScreen(max_progress);
-	if (gscr == NULL)
-	{
-		scr = new FBasicStartupScreen(max_progress, true);
-	}
-	else
-	{
-		scr = new FGraphicalStartupScreen(gscr, max_progress);
-	}
+	scr = new FBasicStartupScreen(max_progress, true);
 	return scr;
 }
 
@@ -412,124 +402,6 @@ static INT_PTR CALLBACK NetStartPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LP
 
 //==========================================================================
 //
-// FGraphicalStartupScreen Constructor
-//
-// This doesn't really do anything. The subclass is responsible for
-// creating the resources that will be freed by this class's destructor.
-//
-//==========================================================================
-
-FGraphicalStartupScreen::FGraphicalStartupScreen(FStartScreen* gscr, int max_progress)
-: FBasicStartupScreen(max_progress, false)
-{
-	GameScreen = gscr;
-}
-
-//==========================================================================
-//
-// FGraphicalStartupScreen Destructor
-//
-//==========================================================================
-
-FGraphicalStartupScreen::~FGraphicalStartupScreen()
-{
-	if (StartupScreen != NULL)
-	{
-		DestroyWindow (StartupScreen);
-		StartupScreen = NULL;
-	}
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::SetWindowSize()
-{
-	ST_Util_SizeWindowForBitmap(GameScreen->GetBitmap(), GameScreen->GetScale());
-	LayoutMainWindow(Window, NULL);
-	InvalidateRect(StartupScreen, NULL, TRUE);
-}
-
-
-//==========================================================================
-//
-// FHexenStartupScreen :: NetProgress
-//
-// Draws the red net noches in addition to the normal progress bar.
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::NetProgress(int count)
-{
-	GameScreen->NetProgress(count);
-	FBasicStartupScreen::NetProgress(count);
-	I_GetEvent();
-}
-
-
-//==========================================================================
-//
-// FHereticStartupScreen :: LoadingStatus
-//
-// Prints text in the center box of the startup screen.
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::LoadingStatus(const char* message, int colors)
-{
-	GameScreen->LoadingStatus(message, colors);
-	I_GetEvent();
-}
-
-//==========================================================================
-//
-// FHereticStartupScreen :: AppendStatusLine
-//
-// Appends text to Heretic's status line.
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::AppendStatusLine(const char* status)
-{
-	GameScreen->AppendStatusLine(status);
-	I_GetEvent();
-}
-
-
-//==========================================================================
-//
-// FStrifeStartupScreen :: Progress
-//
-// Bumps the progress meter one notch.
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::Progress()
-{
-	if (!GameScreen->Progress()) FBasicStartupScreen::Progress();
-	I_GetEvent();
-}
-
-//==========================================================================
-//
-// FBasicStartupScreen :: NetDone
-//
-// Removes the network startup pane.
-//
-//==========================================================================
-
-void FGraphicalStartupScreen::NetDone()
-{
-	GameScreen->NetDone();
-	FBasicStartupScreen::NetDone();
-}
-
-
-//==========================================================================
-//
 // ST_Endoom
 //
 // Shows an ENDOOM text screen
@@ -538,6 +410,7 @@ void FGraphicalStartupScreen::NetDone()
 
 int RunEndoom()
 {
+#if 0
 	if (showendoom == 0 || endoomName.Len() == 0) 
 	{
 		return 0;
@@ -573,10 +446,6 @@ int RunEndoom()
 
 	fileSystem.ReadFile (endoom_lump, endoom_screen);
 
-	// Draw the loading screen to a bitmap.
-	StartupBitmap = ST_Util_AllocTextBitmap();
-	ST_Util_DrawTextScreen (StartupBitmap, endoom_screen);
-
 	// Make the title banner go away.
 	if (GameTitleWindow != NULL)
 	{
@@ -584,7 +453,6 @@ int RunEndoom()
 		GameTitleWindow = NULL;
 	}
 
-	ST_Util_SizeWindowForBitmap (1);
 	LayoutMainWindow (Window, NULL);
 	InvalidateRect (StartupScreen, NULL, TRUE);
 
@@ -624,6 +492,8 @@ int RunEndoom()
 		TranslateMessage (&mess);
 		DispatchMessage (&mess);
 	}
+#endif
+	return 0;
 }
 
 void ST_Endoom()
@@ -633,107 +503,3 @@ void ST_Endoom()
 
 }
 
-//==========================================================================
-//
-// ST_Util_CreateStartupWindow
-//
-// Creates the static control that will draw the startup screen.
-//
-//==========================================================================
-
-bool ST_Util_CreateStartupWindow ()
-{
-	StartupScreen = CreateWindowEx (WS_EX_NOPARENTNOTIFY, L"STATIC", NULL,
-		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | SS_OWNERDRAW,
-		0, 0, 0, 0, Window, NULL, g_hInst, NULL);
-	if (StartupScreen == NULL)
-	{
-		return false;
-	}
-	SetWindowLong (StartupScreen, GWL_ID, IDC_STATIC_STARTUP);
-	return true;
-}
-
-//==========================================================================
-//
-// ST_Util_SizeWindowForBitmap
-//
-// Resizes the main window so that the startup bitmap will be drawn
-// at the desired scale.
-//
-//==========================================================================
-
-void ST_Util_SizeWindowForBitmap (BiotmapInfo* StartupBitmap, int scale)
-{
-	DEVMODE displaysettings;
-	int w, h, cx, cy, x, y;
-	RECT rect;
-
-	if (GameTitleWindow != NULL)
-	{
-		GetClientRect (GameTitleWindow, &rect);
-	}
-	else
-	{
-		rect.bottom = 0;
-	}
-	RECT sizerect = { 0, 0, StartupBitmap->bmiHeader.biWidth * scale,
-		StartupBitmap->bmiHeader.biHeight * scale + rect.bottom };
-	AdjustWindowRectEx(&sizerect, WS_VISIBLE|WS_OVERLAPPEDWINDOW, FALSE, WS_EX_APPWINDOW);
-	w = sizerect.right - sizerect.left;
-	h = sizerect.bottom - sizerect.top;
-
-	// Resize the window, but keep its center point the same, unless that
-	// puts it partially offscreen.
-	memset (&displaysettings, 0, sizeof(displaysettings));
-	displaysettings.dmSize = sizeof(displaysettings);
-	EnumDisplaySettings (NULL, ENUM_CURRENT_SETTINGS, &displaysettings);
-	GetWindowRect (Window, &rect);
-	cx = (rect.left + rect.right) / 2;
-	cy = (rect.top + rect.bottom) / 2;
-	x = cx - w / 2;
-	y = cy - h / 2;
-	if (x + w > (int)displaysettings.dmPelsWidth)
-	{
-		x = displaysettings.dmPelsWidth - w;
-	}
-	if (x < 0)
-	{
-		x = 0;
-	}
-	if (y + h > (int)displaysettings.dmPelsHeight)
-	{
-		y = displaysettings.dmPelsHeight - h;
-	}
-	if (y < 0)
-	{
-		y = 0;
-	}
-	MoveWindow (Window, x, y, w, h, TRUE);
-}
-
-//==========================================================================
-//
-// ST_Util_InvalidateRect
-//
-// Invalidates the portion of the window that the specified rect of the
-// bitmap appears in.
-//
-//==========================================================================
-
-void ST_Util_InvalidateRect (HWND hwnd, BitmapInfo *bitmap_info, int left, int top, int right, int bottom)
-{
-	RECT rect;
-
-	GetClientRect (hwnd, &rect);
-	rect.left = left * rect.right / bitmap_info->bmiHeader.biWidth - 1;
-	rect.top = top * rect.bottom / bitmap_info->bmiHeader.biHeight - 1;
-	rect.right = right * rect.right / bitmap_info->bmiHeader.biWidth + 1;
-	rect.bottom = bottom * rect.bottom / bitmap_info->bmiHeader.biHeight + 1;
-	InvalidateRect (hwnd, &rect, FALSE);
-}
-
-void ST_Util_InvalidateRect(BitmapInfo* bitmap_info, int left, int top, int right, int bottom)
-{
-	ST_Util_InvalidateRect(StartupScreen , bitmap_info, left, top, right, bottom);
-}
