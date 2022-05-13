@@ -91,7 +91,7 @@ FHereticStartScreen::FHereticStartScreen(int max_progress)
 	loading_screen[2 * 160 + 49 * 2] = HERETIC_MINOR_VERSION;
 
 	// Draw the loading screen to a bitmap.
-	StartupBitmap = AllocTextBitmap();
+	StartupBitmap.Create(80 * 8, 25 * 16);
 	DrawTextScreen(StartupBitmap, loading_screen);
 
 	ThermX = THERM_X * 8;
@@ -101,6 +101,7 @@ FHereticStartScreen::FHereticStartScreen(int max_progress)
 	HMsgY = 7;
 	SMsgX = 1;
 	NotchPos = 0;
+	CreateHeader();
 }
 
 //==========================================================================

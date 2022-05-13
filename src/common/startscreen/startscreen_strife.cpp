@@ -133,6 +133,7 @@ FStrifeStartScreen::FStrifeStartScreen(int max_progress)
 	// Make the startup image appear.
 	DrawStuff(0, 0);
 	Scale = 2;
+	CreateHeader();
 }
 
 //==========================================================================

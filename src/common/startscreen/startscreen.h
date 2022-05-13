@@ -76,7 +76,11 @@ protected:
 	int CurPos = 0;
 	int MaxPos;
 	int Scale = 1;
+	int NetMaxPos = -1;
+	int NetCurPos = 0;
 	FBitmap StartupBitmap;
+	FBitmap HeaderBitmap;
+	FString NetMessageString;
 public:
 	FStartScreen(int maxp) { MaxPos = maxp; }
 	virtual ~FStartScreen() = default;
@@ -88,9 +92,19 @@ public:
 	}
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
-	virtual bool NetInit(const char* message, int numplayers) { return false; }
+	virtual bool NetInit(const char* message, int numplayers);
 	virtual bool NetMessage(const char* format, ...) { return false; }
-	virtual void NetProgress(int) {}
+	virtual void NetProgress(int count) 
+	{
+		if (count == 0)
+		{
+			NetCurPos++;
+		}
+		else if (count > 0)
+		{
+			NetCurPos = count;
+		}
+	}
 	virtual void NetDone() {}
 	virtual void NetTick() {}
 	FBitmap& GetBitmap() { return StartupBitmap; }
@@ -103,7 +117,10 @@ protected:
 	void DrawTextScreen(FBitmap& bitmap_info, const uint8_t* text_screen);
 	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint8_t attrib);
 	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg);
+	int DrawString(FBitmap& screen, int x, int y, const char* text, RgbQuad fg, RgbQuad bg);
 	void UpdateTextBlink(FBitmap& bitmap_info, const uint8_t* text_screen, bool on);
 	void ST_Sound(const char* sndname);
 	int SizeOfText(const char* text);
+	void CreateHeader();
+	void DrawNetStatus(int found, int total);
 };

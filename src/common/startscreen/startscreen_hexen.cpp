@@ -54,8 +54,6 @@ class FHexenStartScreen : public FStartScreen
 	FBitmap NotchBits;
 	FBitmap NetNotchBits;
 	int NotchPos = 0;
-	int NetCurPos = 0;
-	int NetMaxPos = 0;
 
 public:
 	FHexenStartScreen(int max_progress);
@@ -121,6 +119,7 @@ FHexenStartScreen::FHexenStartScreen(int max_progress)
 			S_ChangeMusic("orb", true, true);
 		}
 	}
+	CreateHeader();
 }
 
 //==========================================================================
@@ -169,14 +168,6 @@ void FHexenStartScreen::NetProgress(int count)
 
 	FStartScreen::NetProgress(count);
 	
-	if (count == 0)
-	{
-		NetCurPos++;
-	}
-	else if (count > 0)
-	{
-		NetCurPos = count;
-	}
 	if (NetMaxPos != 0 && NetCurPos > oldpos)
 	{
 		int numnotches = (4 * 8) / NetNotchBits.GetWidth();

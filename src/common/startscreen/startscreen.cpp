@@ -42,6 +42,8 @@
 #include "m_argv.h"
 #include "engineerrors.h"
 #include "utf8.h"
+#include "gstrings.h"
+#include "printf.h"
 
 // Text mode color values
 enum{
@@ -386,22 +388,6 @@ void FStartScreen::ClearBlock(FBitmap& bitmap_info, RgbQuad fill, int x, int y, 
 
 //==========================================================================
 //
-// ST_Util_AllocTextBitmap
-//
-// Returns a bitmap properly sized to hold an 80x25 display of characters
-// using the specified font.
-//
-//==========================================================================
-
-FBitmap FStartScreen::AllocTextBitmap()
-{
-	FBitmap ret;
-	ret.Create(80*8, 25*16);
-	return ret;
-}
-
-//==========================================================================
-//
 // ST_Util_DrawTextScreen
 //
 // Draws the text screen to the bitmap. The bitmap must be the proper size
@@ -435,11 +421,13 @@ uint8_t* GetHexChar(int codepoint);
 
 int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg)
 {
+	if (x < 0 || y < 0 || y >= screen.GetHeight() - 16) return 8;
 	static const uint8_t space[17] = { 16 };
 	const RgbQuad color_array[4] = { bg, fg };
 	const uint8_t* src = GetHexChar(charnum);
 	if (!src) src = space;
-	int size = *src++;
+	int size = (*src++) >> 1;
+	if (x >= screen.GetWidth() - size) return size;
 	int pitch = screen.GetWidth();
 	RgbQuad* dest = (RgbQuad*)screen.GetPixels() + x * 8 + y * 16 * pitch;
 
@@ -455,7 +443,7 @@ int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQ
 		dest[5] = color_array[(srcbyte >> 2) & 1];
 		dest[6] = color_array[(srcbyte >> 1) & 1];
 		dest[7] = color_array[(srcbyte) & 1];
-		if (size == 32)
+		if (size == 16)
 		{
 			srcbyte = *src++;
 
@@ -479,6 +467,17 @@ int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint
 	const uint8_t fg = attrib & 0x0F;
 	auto bgc = TextModePalette[bg], fgc = TextModePalette[fg];
 	return DrawChar(screen, x, y, charnum, fgc, bgc);
+}
+
+int FStartScreen::DrawString(FBitmap& screen, int x, int y, const char* text, RgbQuad fg, RgbQuad bg)
+{
+	int oldx = x;
+	auto str = (const uint8_t*)text;
+	while (auto chr = GetCharFromString(str))
+	{
+		x += DrawChar(screen, x, y, chr, fg, bg);
+	}
+	return x - oldx;
 }
 
 //==========================================================================
@@ -528,8 +527,71 @@ void FStartScreen::UpdateTextBlink(FBitmap& bitmap_info, const uint8_t* text_scr
 	}
 }
 
+//==========================================================================
+//
+// ST_Sound
+//
+// plays a sound on the start screen
+//
+//==========================================================================
+
 void FStartScreen::ST_Sound(const char* sndname)
 {
 	if (sysCallbacks.PlayStartupSound)
 		sysCallbacks.PlayStartupSound(sndname);
 }
+
+//==========================================================================
+//
+// CreateHeader
+//
+// creates a bitmap for the title header
+//
+//==========================================================================
+
+void FStartScreen::CreateHeader()
+{
+	HeaderBitmap.Create(StartupBitmap.GetWidth(), 2 * 16);
+	RgbQuad bcolor, fcolor;
+	bcolor.rgbRed = RPART(GameStartupInfo.BkColor);
+	bcolor.rgbGreen = GPART(GameStartupInfo.BkColor);
+	bcolor.rgbBlue = BPART(GameStartupInfo.BkColor);
+	bcolor.rgbReserved = 255;
+	fcolor.rgbRed = RPART(GameStartupInfo.FgColor);
+	fcolor.rgbGreen = GPART(GameStartupInfo.FgColor);
+	fcolor.rgbBlue = BPART(GameStartupInfo.FgColor);
+	fcolor.rgbReserved = 255;
+	ClearBlock(HeaderBitmap, bcolor, 0, 0, HeaderBitmap.GetWidth(), HeaderBitmap.GetHeight());
+	int textlen = SizeOfText(GameStartupInfo.Name);
+	DrawString(HeaderBitmap, (HeaderBitmap.GetWidth() - textlen) >> 1, 8, GameStartupInfo.Name, fcolor, bcolor);
+}
+
+//==========================================================================
+//
+// DrawNetStatus
+//
+// Draws network status into the last line of the startup screen.
+//
+//==========================================================================
+
+void FStartScreen::DrawNetStatus(int found, int total)
+{
+	RgbQuad black = { 0, 0, 0, 255 };
+	RgbQuad gray = { 100, 100, 100, 255 };
+	ClearBlock(StartupBitmap, black, 0, StartupBitmap.GetHeight() - 16, StartupBitmap.GetWidth(), 16);
+	DrawString(StartupBitmap, 0, StartupBitmap.GetHeight() - 16, NetMessageString, gray, black);
+	char of[10];
+	mysnprintf(of, 10, "%d/%d", found, total);
+	int siz = SizeOfText(of);
+	DrawString(StartupBitmap, StartupBitmap.GetWidth() - SizeOfText(of), StartupBitmap.GetHeight() - 16, of, gray, black);
+}
+
+bool FStartScreen::NetInit(const char* message, int numplayers)
+{
+	NetMaxPos = numplayers;
+	NetCurPos = 0;
+	NetMessageString.Format("%s %s", message, GStrings("TXT_NET_PRESSESC"));
+	NetProgress(1);	// You always know about yourself
+	return true;
+}
+
