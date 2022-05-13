@@ -44,6 +44,11 @@
 #include "utf8.h"
 #include "gstrings.h"
 #include "printf.h"
+#include "i_time.h"
+#include "v_video.h"
+#include "v_draw.h"
+#include "g_input.h"
+#include "texturemanager.h"
 
 // Text mode color values
 enum{
@@ -551,7 +556,7 @@ void FStartScreen::ST_Sound(const char* sndname)
 
 void FStartScreen::CreateHeader()
 {
-	HeaderBitmap.Create(StartupBitmap.GetWidth(), 2 * 16);
+	HeaderBitmap.Create(StartupBitmap.GetWidth() * Scale, 2 * 16);
 	RgbQuad bcolor, fcolor;
 	bcolor.rgbRed = RPART(GameStartupInfo.BkColor);
 	bcolor.rgbGreen = GPART(GameStartupInfo.BkColor);
@@ -564,6 +569,7 @@ void FStartScreen::CreateHeader()
 	ClearBlock(HeaderBitmap, bcolor, 0, 0, HeaderBitmap.GetWidth(), HeaderBitmap.GetHeight());
 	int textlen = SizeOfText(GameStartupInfo.Name);
 	DrawString(HeaderBitmap, (HeaderBitmap.GetWidth() - textlen) >> 1, 8, GameStartupInfo.Name, fcolor, bcolor);
+	NetBitmap.Create(StartupBitmap.GetWidth() * Scale, 16);
 }
 
 //==========================================================================
@@ -578,13 +584,21 @@ void FStartScreen::DrawNetStatus(int found, int total)
 {
 	RgbQuad black = { 0, 0, 0, 255 };
 	RgbQuad gray = { 100, 100, 100, 255 };
-	ClearBlock(StartupBitmap, black, 0, StartupBitmap.GetHeight() - 16, StartupBitmap.GetWidth(), 16);
-	DrawString(StartupBitmap, 0, StartupBitmap.GetHeight() - 16, NetMessageString, gray, black);
+	ClearBlock(NetBitmap, black, 0, NetBitmap.GetHeight() - 16, NetBitmap.GetWidth(), 16);
+	DrawString(NetBitmap, 0, 0, NetMessageString, gray, black);
 	char of[10];
 	mysnprintf(of, 10, "%d/%d", found, total);
 	int siz = SizeOfText(of);
-	DrawString(StartupBitmap, StartupBitmap.GetWidth() - SizeOfText(of), StartupBitmap.GetHeight() - 16, of, gray, black);
+	DrawString(NetBitmap, NetBitmap.GetWidth() - SizeOfText(of), 0, of, gray, black);
 }
+
+//==========================================================================
+//
+// NetInit
+//
+// sets network status message
+//
+//==========================================================================
 
 bool FStartScreen::NetInit(const char* message, int numplayers)
 {
@@ -593,5 +607,69 @@ bool FStartScreen::NetInit(const char* message, int numplayers)
 	NetMessageString.Format("%s %s", message, GStrings("TXT_NET_PRESSESC"));
 	NetProgress(1);	// You always know about yourself
 	return true;
+}
+
+//==========================================================================
+//
+// Progress
+//
+// advances the progress bar
+//
+//==========================================================================
+
+bool FStartScreen::Progress(void)
+{
+	if (CurPos < MaxPos)
+		++CurPos;
+
+	auto nowtime = I_msTime();
+	// Do not refresh too often. This function gets called a lot more frequently than the screen can update.
+	if (nowtime - screen->FrameTime > 33)
+	{
+		screen->FrameTime = nowtime;
+		screen->BeginFrame();
+		twod->ClearClipRect();
+		I_GetEvent();
+		InvalidateTexture();
+		float displaywidth = HeaderTexture->GetDisplayWidth();
+		float displayheight = HeaderTexture->GetDisplayHeight() + StartupTexture->GetDisplayHeight();
+		// todo: Get the math right for this.
+		DrawTexture(twod, HeaderTexture, 0, 0, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		DrawTexture(twod, StartupTexture, 0, 32, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		if (NetMaxPos >= 0) DrawTexture(twod, NetTexture, 0, displayheight - 16, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		twod->End();
+		screen->Update();
+		twod->OnFrameDone();
+	}
+}
+
+FImageSource* CreateStartScreenTexture(FBitmap& srcdata);
+
+void FStartScreen::InvalidateTexture()
+{
+	if (StartupTexture == nullptr)
+	{
+		auto imgsource = CreateStartScreenTexture(StartupBitmap);
+		StartupTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
+		StartupTexture->SetScale(1. / Scale, 1. / Scale);
+	}
+	else
+	{
+		StartupTexture->CleanHardwareData(true);
+	}
+	if (HeaderTexture == nullptr)
+	{
+		auto imgsource = CreateStartScreenTexture(HeaderBitmap);
+		HeaderTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
+	}
+	if (NetTexture == nullptr)
+	{
+		auto imgsource = CreateStartScreenTexture(NetBitmap);
+		NetTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
+	}
+	else
+	{
+		NetTexture->CleanHardwareData(true);
+	}
 }
 

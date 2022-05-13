@@ -136,9 +136,8 @@ bool FHexenStartScreen::Progress()
 
 	if (CurPos < MaxPos)
 	{
-		CurPos++;
 		int numnotches = (16 * 32) / NotchBits.GetWidth();
-		notch_pos = (CurPos * numnotches) / MaxPos;
+		notch_pos = ((CurPos + 1) * numnotches) / MaxPos;
 		if (notch_pos != NotchPos)
 		{ // Time to draw another notch.
 			for (; NotchPos < notch_pos; NotchPos++)
@@ -150,7 +149,7 @@ bool FHexenStartScreen::Progress()
 			ST_Sound("StartupTick");
 		}
 	}
-	return true;
+	return FStartScreen::Progress();
 }
 
 //==========================================================================

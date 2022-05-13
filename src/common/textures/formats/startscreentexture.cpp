@@ -55,8 +55,18 @@ class FStartScreenTexture : public FImageSource
 	FBitmap& info; // This must remain constant for the lifetime of this texture
 
 public:
-	FStartScreenTexture (FBitmap& srcdata);
-	int CopyPixels(FBitmap *bmp, int conversion) override;
+	FStartScreenTexture(FBitmap& srcdata)
+		: FImageSource(-1), info(srcdata)
+	{
+		Width = srcdata.GetWidth();
+		Height = srcdata.GetHeight();
+		bUseGamePalette = false;
+	}
+	int CopyPixels(FBitmap* bmp, int conversion)
+	{
+		bmp->Blit(0, 0, info);
+		return 0;
+	}
 };
 
 //==========================================================================
@@ -71,28 +81,3 @@ FImageSource *CreateStartScreenTexture(FBitmap& srcdata)
 }
 
 
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-FStartScreenTexture::FStartScreenTexture (FBitmap& srcdata)
-: FImageSource(-1), info(srcdata)
-{
-	Width = srcdata.GetWidth();
-	Height = srcdata.GetHeight();
-	bUseGamePalette = false;
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-int FStartScreenTexture::CopyPixels(FBitmap *bmp, int conversion)
-{
-	bmp->Blit(0, 0, info);
-	return 0;
-}

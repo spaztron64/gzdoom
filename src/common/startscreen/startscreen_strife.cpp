@@ -150,8 +150,7 @@ bool FStrifeStartScreen::Progress()
 
 	if (CurPos < MaxPos)
 	{
-		CurPos++;
-		notch_pos = (CurPos * (ST_LASERSPACE_WIDTH - ST_LASER_WIDTH)) / MaxPos;
+		notch_pos = ((CurPos + 1) * (ST_LASERSPACE_WIDTH - ST_LASER_WIDTH)) / MaxPos;
 		if (notch_pos != NotchPos && !(notch_pos & 1))
 		{ // Time to update.
 			DrawStuff(NotchPos, notch_pos);

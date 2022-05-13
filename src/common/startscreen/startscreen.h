@@ -80,16 +80,15 @@ protected:
 	int NetCurPos = 0;
 	FBitmap StartupBitmap;
 	FBitmap HeaderBitmap;
+	FBitmap NetBitmap;
 	FString NetMessageString;
+	FGameTexture* StartupTexture = nullptr;
+	FGameTexture* HeaderTexture = nullptr;
+	FGameTexture* NetTexture = nullptr;
 public:
 	FStartScreen(int maxp) { MaxPos = maxp; }
 	virtual ~FStartScreen() = default;
-	virtual bool Progress()
-	{
-		if (CurPos < MaxPos)
-			++CurPos;
-		return false;
-	}
+	virtual bool Progress();
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
 	virtual bool NetInit(const char* message, int numplayers);
@@ -123,4 +122,5 @@ protected:
 	int SizeOfText(const char* text);
 	void CreateHeader();
 	void DrawNetStatus(int found, int total);
+	void InvalidateTexture();
 };

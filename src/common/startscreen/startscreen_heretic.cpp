@@ -116,8 +116,7 @@ bool FHereticStartScreen::Progress()
 {
 	if (CurPos < MaxPos)
 	{
-		CurPos++;
-		int notch_pos = (CurPos * ThermWidth) / MaxPos;
+		int notch_pos = ((CurPos + 1) * ThermWidth) / MaxPos;
 		if (notch_pos != NotchPos && !(notch_pos & 3))
 		{ // Time to draw another notch.
 			int left = NotchPos + ThermX;
@@ -128,7 +127,7 @@ bool FHereticStartScreen::Progress()
 			NotchPos = notch_pos;
 		}
 	}
-	return true;
+	return FStartScreen::Progress();
 }
 
 //==========================================================================
