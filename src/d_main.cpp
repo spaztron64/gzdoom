@@ -3064,6 +3064,14 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 
 	D_GrabCVarDefaults(); //parse DEFCVARS
 
+	if (!restart)
+	{
+		if (!batchrun) Printf ("V_Init: allocate screen.\n");
+		V_InitScreenSize();
+		// This allocates a dummy framebuffer as a stand-in until V_Init2 is called.
+		V_InitScreen ();
+	}
+
 	GameConfig->DoKeySetup(gameinfo.ConfigName);
 
 	// Now that wads are loaded, define mod-specific cvars.
@@ -3098,19 +3106,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 
 	// [RH] Initialize palette management
 	InitPalette ();
-	
-	if (!batchrun) Printf ("V_Init: allocate screen.\n");
-	if (!restart)
-	{
-		V_InitScreenSize();
-	}
-	
-	if (!restart)
-	{
-		// This allocates a dummy framebuffer as a stand-in until V_Init2 is called.
-		V_InitScreen ();
-	}
-	
+		
 	if (restart)
 	{
 		// Update screen palette when restarting

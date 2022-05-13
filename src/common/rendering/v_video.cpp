@@ -319,18 +319,7 @@ void V_OutputResized (int width, int height)
 
 bool IVideo::SetResolution ()
 {
-	DFrameBuffer *buff = CreateFrameBuffer();
-
-	if (buff == NULL)	// this cannot really happen
-	{
-		return false;
-	}
-
-	screen = buff;
-	screen->InitializeState();
-
 	V_UpdateModeSize(screen->GetWidth(), screen->GetHeight());
-
 	return true;
 }
 
@@ -374,24 +363,21 @@ void V_InitScreenSize ()
 
 void V_InitScreen()
 {
-	screen = new DDummyFrameBuffer (vid_defwidth, vid_defheight);
+	I_InitGraphics();
+	screen = Video->CreateFrameBuffer();
+	if (screen == nullptr)
+	{
+		I_FatalError("Unable to create frame buffer");
+	}
+	screen->InitializeState();
 }
 
 void V_Init2()
 {
-	{
-		DFrameBuffer *s = screen;
-		screen = NULL;
-		delete s;
-	}
-
 	UCVarValue val;
 
 	val.Bool = !!Args->CheckParm("-devparm");
 	ticker.SetGenericRepDefault(val, CVAR_Bool);
-
-
-	I_InitGraphics();
 
 	Video->SetResolution();	// this only fails via exceptions.
 	Printf ("Resolution: %d x %d\n", SCREENWIDTH, SCREENHEIGHT);
