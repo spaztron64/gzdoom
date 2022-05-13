@@ -41,6 +41,7 @@
 #include "startupinfo.h"
 #include "m_argv.h"
 #include "engineerrors.h"
+#include "utf8.h"
 
 // Text mode color values
 enum{
@@ -49,7 +50,7 @@ enum{
 	HI = 255,
 };
 
-static const RgbQuad TextModePalette[16] =
+const RgbQuad TextModePalette[16] =
 {
 	{  0,  0,  0, 0 },		// 0 black
 	{ MD,  0,  0, 0 },		// 1 blue
@@ -329,12 +330,12 @@ static const uint16_t IBM437ToUnicode[] = {
 	0x00a0, //#NO-BREAK SPACE
 };
 
-FStartScreen* CreateHexenStartScreen(int max_progress, InvalidateRectFunc& func);
-FStartScreen* CreateHereticStartScreen(int max_progress, InvalidateRectFunc& func);
-FStartScreen* CreateStrifeStartScreen(int max_progress, InvalidateRectFunc& func);
+FStartScreen* CreateHexenStartScreen(int max_progress);
+FStartScreen* CreateHereticStartScreen(int max_progress);
+FStartScreen* CreateStrifeStartScreen(int max_progress);
 
 
-FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& InvalidateRect)
+FStartScreen* GetGameStartScreen(int max_progress)
 {
 	if (!Args->CheckParm("-nostartup"))
 	{
@@ -342,15 +343,15 @@ FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& Invalidat
 		{
 			if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
 			{
-				return CreateHexenStartScreen(max_progress, InvalidateRect);
+				return CreateHexenStartScreen(max_progress);
 			}
 			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
 			{
-				return CreateHereticStartScreen(max_progress, InvalidateRect);
+				return CreateHereticStartScreen(max_progress);
 			}
 			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
 			{
-				return CreateStrifeStartScreen(max_progress, InvalidateRect);
+				return CreateStrifeStartScreen(max_progress);
 			}
 		}
 		catch(const CRecoverableError& e)
@@ -363,225 +364,23 @@ FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& Invalidat
 
 //==========================================================================
 //
-// ST_Util_PlanarToChunky4
-//
-// Convert a 4-bpp planar image to chunky pixels.
-//
-//==========================================================================
-
-void FStartScreen::PlanarToChunky4(uint8_t* dest, const uint8_t* src, int width, int height)
-{
-	int y, x;
-	const uint8_t* src1, * src2, * src3, * src4;
-	size_t plane_size = width / 8 * height;
-
-	src1 = src;
-	src2 = src1 + plane_size;
-	src3 = src2 + plane_size;
-	src4 = src3 + plane_size;
-
-	for (y = height; y > 0; --y)
-	{
-		for (x = width; x > 0; x -= 8)
-		{
-			dest[0] = ((*src4 & 0x80) | ((*src3 & 0x80) >> 1) | ((*src2 & 0x80) >> 2) | ((*src1 & 0x80) >> 3)) >> 4;
-			dest[1] = ((*src4 & 0x40) >> 3) | ((*src3 & 0x40) >> 4) | ((*src2 & 0x40) >> 5) | ((*src1 & 0x40) >> 6);
-			dest[2] = (((*src4 & 0x20) << 2) | ((*src3 & 0x20) << 1) | ((*src2 & 0x20)) | ((*src1 & 0x20) >> 1)) >> 4;
-			dest[3] = ((*src4 & 0x10) >> 1) | ((*src3 & 0x10) >> 2) | ((*src2 & 0x10) >> 3) | ((*src1 & 0x10) >> 4);
-			dest[4] = (((*src4 & 0x08) << 4) | ((*src3 & 0x08) << 3) | ((*src2 & 0x08) << 2) | ((*src1 & 0x08) << 1)) >> 4;
-			dest[5] = ((*src4 & 0x04) << 1) | ((*src3 & 0x04)) | ((*src2 & 0x04) >> 1) | ((*src1 & 0x04) >> 2);
-			dest[6] = (((*src4 & 0x02) << 6) | ((*src3 & 0x02) << 5) | ((*src2 & 0x02) << 4) | ((*src1 & 0x02) << 3)) >> 4;
-			dest[7] = ((*src4 & 0x01) << 3) | ((*src3 & 0x01) << 2) | ((*src2 & 0x01) << 1) | ((*src1 & 0x01));
-			dest += 8;
-			src1 += 1;
-			src2 += 1;
-			src3 += 1;
-			src4 += 1;
-		}
-	}
-}
-
-//==========================================================================
-//
-// ST_Util_DrawBlock
-//
-//==========================================================================
-
-void FStartScreen::DrawBlock(BitmapInfo* bitmap_info, const uint8_t* src, int x, int y, int bytewidth, int height)
-{
-	if (src == NULL)
-	{
-		return;
-	}
-
-	int destpitch = bitmap_info->bmiHeader.biWidth;
-	uint8_t* dest = BitsForBitmap(bitmap_info) + x + y * destpitch;
-
-	InvalidateRect(bitmap_info, x, y, x + bytewidth, y + height);
-
-	if (bytewidth == 8)
-	{ // progress notches
-		for (; height > 0; --height)
-		{
-			((uint32_t*)dest)[0] = ((const uint32_t*)src)[0];
-			((uint32_t*)dest)[1] = ((const uint32_t*)src)[1];
-			dest += destpitch;
-			src += 8;
-		}
-	}
-	else if (bytewidth == 2)
-	{ // net progress notches
-		for (; height > 0; --height)
-		{
-			*((uint16_t*)dest) = *((const uint16_t*)src);
-			dest += destpitch;
-			src += 2;
-		}
-	}
-	else
-	{
-		for (; height > 0; --height)
-		{
-			memcpy(dest, src, bytewidth);
-			dest += destpitch;
-			src += bytewidth;
-		}
-	}
-}
-
-//==========================================================================
-//
-// ST_Util_DrawBlock
-//
-//==========================================================================
-
-void FStartScreen::DrawBlock4(BitmapInfo* bitmap_info, const uint8_t* src, int x, int y, int bytewidth, int height)
-{
-	if (src == NULL)
-	{
-		return;
-	}
-
-	int destpitch = bitmap_info->bmiHeader.biWidth;
-	uint8_t* dest = BitsForBitmap(bitmap_info) + x + y * destpitch;
-
-	InvalidateRect(bitmap_info, x, y, x + bytewidth * 2, y + height);
-
-	for (; height > 0; --height)
-	{
-		for (int x = 0; x < bytewidth; x++)
-		{
-			int val = src[x];
-			dest[x * 2] = val >> 4;
-			dest[x * 2 + 1] = val & 15;
-		}
-		dest += destpitch;
-		src += bytewidth;
-	}
-}
-
-//==========================================================================
-//
 // ST_Util_ClearBlock
 //
 //==========================================================================
 
-void FStartScreen::ClearBlock(BitmapInfo* bitmap_info, uint8_t fill, int x, int y, int bytewidth, int height)
+void FStartScreen::ClearBlock(FBitmap& bitmap_info, RgbQuad fill, int x, int y, int bytewidth, int height)
 {
-	int destpitch = bitmap_info->bmiHeader.biWidth;
-	uint8_t* dest = BitsForBitmap(bitmap_info) + x + y * destpitch;
-
-	InvalidateRect(bitmap_info, x, y, x + bytewidth, y + height);
+	int destpitch = bitmap_info.GetWidth();
+	auto dest = (RgbQuad*)(bitmap_info.GetPixels()) + x + y * destpitch;
 
 	while (height > 0)
 	{
-		memset(dest, fill, bytewidth);
+		for(int i = 0; i < bytewidth; i++)
+		{
+			dest[i] = fill;
+		}
 		dest += destpitch;
 		height--;
-	}
-}
-
-//==========================================================================
-//
-// ST_Util_CreateBitmap
-//
-// Creates a BitmapInfoHeader, RgbQuad, and pixel data arranged
-// consecutively in memory (in other words, a normal Windows BMP file).
-// The BitmapInfoHeader will be filled in, and the caller must fill
-// in the color and pixel data.
-//
-// You must pass 4 or 8 for color_bits.
-//
-//==========================================================================
-
-BitmapInfo* FStartScreen::CreateBitmap(int width, int height)
-{
-	uint32_t size_image = (width * height);
-	BitmapInfo* bitmap_info = (BitmapInfo*)M_Malloc(sizeof(BitmapInfoHeader) +
-		(sizeof(RgbQuad) << 8) + size_image);
-
-	// Initialize the header.
-	bitmap_info->bmiHeader.biSize = sizeof(BitmapInfoHeader);
-	bitmap_info->bmiHeader.biWidth = width;
-	bitmap_info->bmiHeader.biHeight = height;
-	bitmap_info->bmiHeader.biPlanes = 1;
-	bitmap_info->bmiHeader.biBitCount = 8;
-	bitmap_info->bmiHeader.biCompression = 0;
-	bitmap_info->bmiHeader.biSizeImage = size_image;
-	bitmap_info->bmiHeader.biXPelsPerMeter = 0;
-	bitmap_info->bmiHeader.biYPelsPerMeter = 0;
-	bitmap_info->bmiHeader.biClrUsed = 1 << 8;
-	bitmap_info->bmiHeader.biClrImportant = 0;
-
-	return bitmap_info;
-}
-
-//==========================================================================
-//
-// ST_Util_BitsForBitmap
-//
-// Given a bitmap created by ST_Util_CreateBitmap, returns the start
-// address for the pixel data for the bitmap.
-//
-//==========================================================================
-
-uint8_t* FStartScreen::BitsForBitmap(BitmapInfo* bitmap_info)
-{
-	return (uint8_t*)bitmap_info + sizeof(BitmapInfoHeader) + (sizeof(RgbQuad) << bitmap_info->bmiHeader.biBitCount);
-}
-
-//==========================================================================
-//
-// ST_Util_FreeBitmap
-//
-// Frees all the data for a bitmap created by ST_Util_CreateBitmap.
-//
-//==========================================================================
-
-void FStartScreen::FreeBitmap(BitmapInfo* bitmap_info)
-{
-	if (bitmap_info) M_Free(bitmap_info);
-}
-
-//==========================================================================
-//
-// ST_Util_BitmapColorsFromPlaypal
-//
-// Fills the bitmap palette from the PLAYPAL lump.
-//
-//==========================================================================
-
-void FStartScreen::BitmapColorsFromPlaypal(BitmapInfo* bitmap_info)
-{
-	uint8_t playpal[768];
-
-	ReadPalette(fileSystem.GetNumForName("PLAYPAL"), playpal);
-	for (int i = 0; i < 256; ++i)
-	{
-		bitmap_info->bmiColors[i].rgbBlue = playpal[i * 3 + 2];
-		bitmap_info->bmiColors[i].rgbGreen = playpal[i * 3 + 1];
-		bitmap_info->bmiColors[i].rgbRed = playpal[i * 3];
-		bitmap_info->bmiColors[i].rgbReserved = 0;
 	}
 }
 
@@ -594,11 +393,11 @@ void FStartScreen::BitmapColorsFromPlaypal(BitmapInfo* bitmap_info)
 //
 //==========================================================================
 
-BitmapInfo* FStartScreen::AllocTextBitmap()
+FBitmap FStartScreen::AllocTextBitmap()
 {
-	BitmapInfo* bitmap = CreateBitmap(80 * 8, 25 * 16);
-	memcpy(bitmap->bmiColors, TextModePalette, sizeof(TextModePalette));
-	return bitmap;
+	FBitmap ret;
+	ret.Create(80*8, 25*16);
+	return ret;
 }
 
 //==========================================================================
@@ -610,7 +409,7 @@ BitmapInfo* FStartScreen::AllocTextBitmap()
 //
 //==========================================================================
 
-void FStartScreen::DrawTextScreen(BitmapInfo* bitmap_info, const uint8_t* text_screen)
+void FStartScreen::DrawTextScreen(FBitmap& bitmap_info, const uint8_t* text_screen)
 {
 	int x, y;
 
@@ -634,17 +433,15 @@ void FStartScreen::DrawTextScreen(BitmapInfo* bitmap_info, const uint8_t* text_s
 //==========================================================================
 uint8_t* GetHexChar(int codepoint);
 
-int FStartScreen::DrawChar(BitmapInfo* screen, int x, int y, unsigned charnum, uint8_t attrib)
+int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg)
 {
 	static const uint8_t space[17] = { 16 };
-	const uint8_t bg = (attrib & 0x70) >> 4;
-	const uint8_t fg = attrib & 0x0F;
-	const uint8_t color_array[4] = { bg, fg };
+	const RgbQuad color_array[4] = { bg, fg };
 	const uint8_t* src = GetHexChar(charnum);
 	if (!src) src = space;
 	int size = *src++;
-	int pitch = screen->bmiHeader.biWidth;
-	uint8_t* dest = BitsForBitmap(screen) + x * 8 + y * 16 * pitch;
+	int pitch = screen.GetWidth();
+	RgbQuad* dest = (RgbQuad*)screen.GetPixels() + x * 8 + y * 16 * pitch;
 
 	for (y = 0; y <16; ++y)
 	{
@@ -676,6 +473,35 @@ int FStartScreen::DrawChar(BitmapInfo* screen, int x, int y, unsigned charnum, u
 	return size;
 }
 
+int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint8_t attrib)
+{
+	const uint8_t bg = (attrib & 0x70) >> 4;
+	const uint8_t fg = attrib & 0x0F;
+	auto bgc = TextModePalette[bg], fgc = TextModePalette[fg];
+	return DrawChar(screen, x, y, charnum, fgc, bgc);
+}
+
+//==========================================================================
+//
+// SizeOfText
+//
+// returns width in pixels
+//
+//==========================================================================
+
+int FStartScreen::SizeOfText(const char* text)
+{
+	int len = 0;
+	const uint8_t* utext = (uint8_t*)text;
+	while(auto code = GetCharFromString(utext))
+	{
+		const uint8_t* src = GetHexChar(code);
+		if (src && *src == 32) len += 16;
+		else len += 8;
+	}
+	return len;
+}
+
 //==========================================================================
 //
 // ST_Util_UpdateTextBlink
@@ -685,7 +511,7 @@ int FStartScreen::DrawChar(BitmapInfo* screen, int x, int y, unsigned charnum, u
 //
 //==========================================================================
 
-void FStartScreen::UpdateTextBlink(BitmapInfo* bitmap_info, const uint8_t* text_screen, bool on)
+void FStartScreen::UpdateTextBlink(FBitmap& bitmap_info, const uint8_t* text_screen, bool on)
 {
 	int x, y;
 
@@ -696,7 +522,6 @@ void FStartScreen::UpdateTextBlink(BitmapInfo* bitmap_info, const uint8_t* text_
 			if (text_screen[1] & 0x80)
 			{
 				DrawChar(bitmap_info, x, y, on ? IBM437ToUnicode[text_screen[0]] : ' ', text_screen[1]);
-				InvalidateRect(bitmap_info, x * 8, y * 16, x * 8 + 8, y * 16 + 16);
 			}
 			text_screen += 2;
 		}

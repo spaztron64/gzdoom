@@ -37,6 +37,7 @@
 */
 #include <stdint.h>
 #include <functional>
+#include "bitmap.h"
 
 struct BitmapInfoHeader 
 {
@@ -64,12 +65,10 @@ struct RgbQuad
 
 struct BitmapInfo 
 {
-	BitmapInfoHeader    bmiHeader;
 	RgbQuad             bmiColors[1];
 };
 
-
-using InvalidateRectFunc = std::function<void(BitmapInfo* bmi, int, int, int, int)>;
+extern const RgbQuad TextModePalette[16];
 
 class FStartScreen
 {
@@ -77,9 +76,9 @@ protected:
 	int CurPos = 0;
 	int MaxPos;
 	int Scale = 1;
-	InvalidateRectFunc InvalidateRect;
+	FBitmap StartupBitmap;
 public:
-	FStartScreen(int maxp, InvalidateRectFunc inv) { MaxPos = maxp; InvalidateRect = inv; }
+	FStartScreen(int maxp) { MaxPos = maxp; }
 	virtual ~FStartScreen() = default;
 	virtual bool Progress()
 	{
@@ -94,22 +93,17 @@ public:
 	virtual void NetProgress(int) {}
 	virtual void NetDone() {}
 	virtual void NetTick() {}
-	virtual BitmapInfo* GetBitmap() { return nullptr; }
+	FBitmap& GetBitmap() { return StartupBitmap; }
 	int GetScale() const { return Scale; }
+
 	
 protected:
-	void PlanarToChunky4(uint8_t* dest, const uint8_t* src, int width, int height);
-	void DrawBlock(BitmapInfo* bitmap_info, const uint8_t* src, int x, int y, int bytewidth, int height);
-	void DrawBlock4(BitmapInfo* bitmap_info, const uint8_t* src, int x, int y, int bytewidth, int height);
-	void ClearBlock(BitmapInfo* bitmap_info, uint8_t fill, int x, int y, int bytewidth, int height);
-	BitmapInfo* CreateBitmap(int width, int height);
-	uint8_t* BitsForBitmap(BitmapInfo* bitmap_info);
-	void FreeBitmap(BitmapInfo* bitmap_info);
-	void BitmapColorsFromPlaypal(BitmapInfo* bitmap_info);
-	BitmapInfo* AllocTextBitmap();
-	void DrawTextScreen(BitmapInfo* bitmap_info, const uint8_t* text_screen);
-	int DrawChar(BitmapInfo* screen, int x, int y, unsigned charnum, uint8_t attrib);
-	void UpdateTextBlink(BitmapInfo* bitmap_info, const uint8_t* text_screen, bool on);
+	void ClearBlock(FBitmap& bitmap_info, RgbQuad fill, int x, int y, int bytewidth, int height);
+	FBitmap AllocTextBitmap();
+	void DrawTextScreen(FBitmap& bitmap_info, const uint8_t* text_screen);
+	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint8_t attrib);
+	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg);
+	void UpdateTextBlink(FBitmap& bitmap_info, const uint8_t* text_screen, bool on);
 	void ST_Sound(const char* sndname);
-
+	int SizeOfText(const char* text);
 };

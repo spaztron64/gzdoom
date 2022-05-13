@@ -36,6 +36,8 @@
 #include "startscreen.h"
 #include "filesystem.h"
 #include "printf.h"
+#include "image.h"
+#include "palettecontainer.h"
 
 // Strife startup screen
 #define PEASANT_INDEX			0
@@ -58,32 +60,26 @@
 #define ST_PEASANT_WIDTH		32
 #define ST_PEASANT_HEIGHT		64
 
-static const char* StrifeStartupPicNames[4 + 2 + 1] =
+static const char* StrifeStartupPicNames[] =
 {
 	"STRTPA1", "STRTPB1", "STRTPC1", "STRTPD1",
 	"STRTLZ1", "STRTLZ2",
-	"STRTBOT"
+	"STRTBOT",
+	"STARTUP0"
 };
-static const int StrifeStartupPicSizes[4 + 2 + 1] =
-{
-	2048, 2048, 2048, 2048,
-	256, 256,
-	2304
-};
+
 
 
 class FStrifeStartScreen : public FStartScreen
 {
 public:
-	FStrifeStartScreen(int max_progress, InvalidateRectFunc& inv);
-	~FStrifeStartScreen();
+	FStrifeStartScreen(int max_progress);
 
 	bool Progress() override;
 protected:
 	void DrawStuff(int old_laser, int new_laser);
 
-	uint8_t *StartupPics[4+2+1] = {};
-	BitmapInfo* StartupBitmap = nullptr;
+	FBitmap StartupPics[4+2+1+1];
 	int NotchPos = 0;
 };
 
@@ -104,68 +100,41 @@ protected:
 //
 //==========================================================================
 
-FStrifeStartScreen::FStrifeStartScreen(int max_progress, InvalidateRectFunc& inv)
-	: FStartScreen(max_progress, inv)
+FStrifeStartScreen::FStrifeStartScreen(int max_progress)
+	: FStartScreen(max_progress)
 {
+	// at this point we do not have a working texture manager yet, so we have to do the lookup via the file system
+
 	int startup_lump = fileSystem.CheckNumForName("STARTUP0");
 	int i;
 
-	for (i = 0; i < 4 + 2 + 1; ++i)
-	{
-		StartupPics[i] = NULL;
-	}
-
-	if (startup_lump < 0 || fileSystem.FileLength(startup_lump) != 64000)
+	if (startup_lump < 0)
 	{
 		I_Error("bad startscreen assets");
 	}
 
-	StartupBitmap = CreateBitmap(320, 200);
-	BitmapColorsFromPlaypal(StartupBitmap);
-
-	// Fill bitmap with the startup image.
-	memset(BitsForBitmap(StartupBitmap), 0xF0, 64000);
-	auto lumpr = fileSystem.OpenFileReader(startup_lump);
-	lumpr.Seek(57 * 320, FileReader::SeekSet);
-	lumpr.Read(BitsForBitmap(StartupBitmap) + 41 * 320, 95 * 320);
+	StartupBitmap.Create(320, 200);
 
 	// Load the animated overlays.
-	for (i = 0; i < 4 + 2 + 1; ++i)
+	for (size_t i = 0; i < countof(StrifeStartupPicNames); ++i)
 	{
 		int lumpnum = fileSystem.CheckNumForName(StrifeStartupPicNames[i]);
 		int lumplen;
 
-		if (lumpnum >= 0 && (lumplen = fileSystem.FileLength(lumpnum)) == StrifeStartupPicSizes[i])
+		if (lumpnum >= 0)
 		{
-			auto lumpr1 = fileSystem.OpenFileReader(lumpnum);
-			StartupPics[i] = new uint8_t[lumplen];
-			lumpr1.Read(StartupPics[i], lumplen);
+			auto lumpr1 = FImageSource::GetImage(lumpnum, false);
+			if (lumpr1) StartupPics[i] = lumpr1->GetCachedBitmap(nullptr, FImageSource::normal);
 		}
+	}
+	if (StartupPics[7].GetWidth() != 320 || StartupPics[7].GetHeight() != 200)
+	{
+		I_Error("bad startscreen assets");
 	}
 
 	// Make the startup image appear.
 	DrawStuff(0, 0);
 	Scale = 2;
-}
-
-//==========================================================================
-//
-// FStrifeStartScreen Destructor
-//
-// Frees the strife pictures.
-//
-//==========================================================================
-
-FStrifeStartScreen::~FStrifeStartScreen()
-{
-	for (int i = 0; i < 4 + 2 + 1; ++i)
-	{
-		if (StartupPics[i] != NULL)
-		{
-			delete[] StartupPics[i];
-		}
-		StartupPics[i] = NULL;
-	}
 }
 
 //==========================================================================
@@ -206,35 +175,27 @@ bool FStrifeStartScreen::Progress()
 void FStrifeStartScreen::DrawStuff(int old_laser, int new_laser)
 {
 	int y;
-	auto bitmap_info = StartupBitmap;
 
 	// Clear old laser
-	ClearBlock(bitmap_info, 0xF0, ST_LASERSPACE_X + old_laser,
-		ST_LASERSPACE_Y, ST_LASER_WIDTH, ST_LASER_HEIGHT);
+	StartupBitmap.Blit(0, 0, StartupPics[7]);
+
 	// Draw new laser
-	DrawBlock(bitmap_info, StartupPics[LASER_INDEX + (new_laser & 1)],
-		ST_LASERSPACE_X + new_laser, ST_LASERSPACE_Y, ST_LASER_WIDTH, ST_LASER_HEIGHT);
+	auto& lp = StartupPics[LASER_INDEX + (new_laser & 1)];
+	StartupBitmap.Blit(ST_LASERSPACE_X + new_laser, ST_LASERSPACE_Y, lp);
 
 	// The bot jumps up and down like crazy.
 	y = max(0, (new_laser >> 1) % 5 - 2);
-	if (y > 0)
-	{
-		ClearBlock(bitmap_info, 0xF0, ST_BOT_X, ST_BOT_Y, ST_BOT_WIDTH, y);
-	}
-	DrawBlock(bitmap_info, StartupPics[BOT_INDEX], ST_BOT_X, ST_BOT_Y + y, ST_BOT_WIDTH, ST_BOT_HEIGHT);
-	if (y < (5 - 1) - 2)
-	{
-		ClearBlock(bitmap_info, 0xF0, ST_BOT_X, ST_BOT_Y + ST_BOT_HEIGHT + y, ST_BOT_WIDTH, 2 - y);
-	}
+
+	StartupBitmap.Blit(ST_BOT_X, ST_BOT_Y + y, StartupPics[BOT_INDEX]);
 
 	// The peasant desperately runs in place, trying to get away from the laser.
 	// Yet, despite all his limb flailing, he never manages to get anywhere.
-	DrawBlock(bitmap_info, StartupPics[PEASANT_INDEX + ((new_laser >> 1) & 3)],
-		ST_PEASANT_X, ST_PEASANT_Y, ST_PEASANT_WIDTH, ST_PEASANT_HEIGHT);
+	auto& pp = StartupPics[PEASANT_INDEX + ((new_laser >> 1) & 3)];
+	StartupBitmap.Blit(ST_PEASANT_X, ST_PEASANT_Y, pp);
 }
 
 
-FStartScreen* CreateStrifeStartScreen(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateStrifeStartScreen(int max_progress)
 {
-	return new FStrifeStartScreen(max_progress, func);
+	return new FStrifeStartScreen(max_progress);
 }

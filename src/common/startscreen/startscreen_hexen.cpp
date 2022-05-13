@@ -38,38 +38,31 @@
 #include "printf.h"
 #include "startupinfo.h"
 #include "s_music.h"
+#include "image.h"
 
 // Hexen startup screen
-#define ST_MAX_NOTCHES			32
-#define ST_NOTCH_WIDTH			16
-#define ST_NOTCH_HEIGHT			23
 #define ST_PROGRESS_X			64			// Start of notches x screen pos.
 #define ST_PROGRESS_Y			441			// Start of notches y screen pos.
 
 #define ST_NETPROGRESS_X		288
 #define ST_NETPROGRESS_Y		32
-#define ST_NETNOTCH_WIDTH		4
-#define ST_NETNOTCH_HEIGHT		16
-#define ST_MAX_NETNOTCHES		8
 
 class FHexenStartScreen : public FStartScreen
 {
-	BitmapInfo* StartupBitmap = nullptr;
 	// Hexen's notch graphics, converted to chunky pixels.
-	uint8_t * NotchBits = nullptr;
-	uint8_t * NetNotchBits = nullptr;
+	FBitmap Background;
+	FBitmap NotchBits;
+	FBitmap NetNotchBits;
 	int NotchPos = 0;
 	int NetCurPos = 0;
 	int NetMaxPos = 0;
 
 public:
-	FHexenStartScreen(int max_progress, InvalidateRectFunc& inv);
-	~FHexenStartScreen();
+	FHexenStartScreen(int max_progress);
 
 	bool Progress() override;
 	void NetProgress(int count) override;
 	void NetDone() override;
-	BitmapInfo* GetBitmap() override { return StartupBitmap; }
 };
 
 
@@ -85,53 +78,36 @@ public:
 //
 //==========================================================================
 
-FHexenStartScreen::FHexenStartScreen(int max_progress, InvalidateRectFunc& inv)
-	: FStartScreen(max_progress, inv)
+FHexenStartScreen::FHexenStartScreen(int max_progress)
+	: FStartScreen(max_progress)
 {
+	// at this point we do not have a working texture manager yet, so we have to do the lookup via the file system
 	int startup_lump = fileSystem.CheckNumForName("STARTUP");
 	int netnotch_lump = fileSystem.CheckNumForName("NETNOTCH");
 	int notch_lump = fileSystem.CheckNumForName("NOTCH");
 
-	if (startup_lump < 0 || fileSystem.FileLength(startup_lump) != 153648 ||
-		netnotch_lump < 0 || fileSystem.FileLength(netnotch_lump) != ST_NETNOTCH_WIDTH / 2 * ST_NETNOTCH_HEIGHT ||
-		notch_lump < 0 || fileSystem.FileLength(notch_lump) != ST_NOTCH_WIDTH / 2 * ST_NOTCH_HEIGHT)
+	if (startup_lump < 0 || netnotch_lump < 0 || notch_lump < 0)
 	{
 		I_Error("Start screen assets missing");
 	}
 
-	NetNotchBits = new uint8_t[ST_NETNOTCH_WIDTH / 2 * ST_NETNOTCH_HEIGHT];
-	fileSystem.ReadFile(netnotch_lump, NetNotchBits);
-	NotchBits = new uint8_t[ST_NOTCH_WIDTH / 2 * ST_NOTCH_HEIGHT];
-	fileSystem.ReadFile(notch_lump, NotchBits);
-
-	uint8_t startup_screen[153648];
-	union
+	auto iBackground = FImageSource::GetImage(startup_lump, false);
+	auto iNetNotchBits = FImageSource::GetImage(netnotch_lump, false);
+	auto iNotchBits = FImageSource::GetImage(notch_lump, false);
+	if (!iBackground || !iNetNotchBits || iNotchBits || iBackground->GetWidth() != 640 || iBackground->GetHeight() != 480)
 	{
-		RgbQuad color;
-		uint32_t	quad;
-	} c;
-
-	fileSystem.ReadFile(startup_lump, startup_screen);
-
-	c.color.rgbReserved = 0;
-
-	StartupBitmap = CreateBitmap(640, 480);
-
-	// Initialize the bitmap palette.
-	for (int i = 0; i < 16; ++i)
-	{
-		c.color.rgbRed = startup_screen[i * 3 + 0];
-		c.color.rgbGreen = startup_screen[i * 3 + 1];
-		c.color.rgbBlue = startup_screen[i * 3 + 2];
-		// Convert from 6-bit per component to 8-bit per component.
-		c.quad = (c.quad << 2) | ((c.quad >> 4) & 0x03030303);
-		StartupBitmap->bmiColors[i] = c.color;
+		I_Error("Start screen assets missing");
 	}
+	NetNotchBits = iNetNotchBits->GetCachedBitmap(nullptr, FImageSource::normal);
+	NotchBits = iNotchBits->GetCachedBitmap(nullptr, FImageSource::normal);
+	Background = iBackground->GetCachedBitmap(nullptr, FImageSource::normal);
+
+	StartupBitmap.Create(640, 480);
+	StartupBitmap.Blit(0, 0, Background, 640, 480);
 
 	// Fill in the bitmap data. Convert to chunky, because I can't figure out
 	// if Windows actually supports planar images or not, despite the presence
 	// of biPlanes in the BITMAPINFOHEADER.
-	PlanarToChunky4(BitsForBitmap(StartupBitmap), startup_screen + 48, 640, 480);
 
 
 	if (!batchrun)
@@ -149,23 +125,6 @@ FHexenStartScreen::FHexenStartScreen(int max_progress, InvalidateRectFunc& inv)
 
 //==========================================================================
 //
-// FHexenStartScreen Deconstructor
-//
-// Frees the notch pictures.
-//
-//==========================================================================
-
-FHexenStartScreen::~FHexenStartScreen()
-{
-	FreeBitmap(StartupBitmap);
-	if (NotchBits)
-		delete[] NotchBits;
-	if (NetNotchBits)
-		delete[] NetNotchBits;
-}
-
-//==========================================================================
-//
 // FHexenStartScreen :: Progress
 //
 // Bumps the progress meter one notch.
@@ -179,14 +138,15 @@ bool FHexenStartScreen::Progress()
 	if (CurPos < MaxPos)
 	{
 		CurPos++;
-		notch_pos = (CurPos * ST_MAX_NOTCHES) / MaxPos;
+		int numnotches = (16 * 32) / NotchBits.GetWidth();
+		notch_pos = (CurPos * numnotches) / MaxPos;
 		if (notch_pos != NotchPos)
 		{ // Time to draw another notch.
 			for (; NotchPos < notch_pos; NotchPos++)
 			{
-				x = ST_PROGRESS_X + ST_NOTCH_WIDTH * NotchPos;
+				x = ST_PROGRESS_X + NotchBits.GetWidth() * NotchPos;
 				y = ST_PROGRESS_Y;
-				DrawBlock4(StartupBitmap, NotchBits, x, y, ST_NOTCH_WIDTH / 2, ST_NOTCH_HEIGHT);
+				StartupBitmap.Blit(x, y, NotchBits);
 			}
 			ST_Sound("StartupTick");
 		}
@@ -208,13 +168,25 @@ void FHexenStartScreen::NetProgress(int count)
 	int x, y;
 
 	FStartScreen::NetProgress(count);
+	
+	if (count == 0)
+	{
+		NetCurPos++;
+	}
+	else if (count > 0)
+	{
+		NetCurPos = count;
+	}
 	if (NetMaxPos != 0 && NetCurPos > oldpos)
 	{
-		for (; oldpos < NetCurPos && oldpos < ST_MAX_NETNOTCHES; ++oldpos)
+		int numnotches = (4 * 8) / NetNotchBits.GetWidth();
+		int notch_pos = (NetCurPos * numnotches) / NetMaxPos;
+
+		for (; oldpos < NetCurPos && oldpos < numnotches; ++oldpos)
 		{
-			x = ST_NETPROGRESS_X + ST_NETNOTCH_WIDTH * oldpos;
+			x = ST_NETPROGRESS_X + NetNotchBits.GetWidth() * oldpos;
 			y = ST_NETPROGRESS_Y;
-			DrawBlock4(StartupBitmap, NetNotchBits, x, y, ST_NETNOTCH_WIDTH / 2, ST_NETNOTCH_HEIGHT);
+			StartupBitmap.Blit(x, y, NetNotchBits);
 		}
 		ST_Sound("misc/netnotch");
 	}
@@ -235,7 +207,7 @@ void FHexenStartScreen::NetDone()
 }
 
 
-FStartScreen* CreateHexenStartScreen(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateHexenStartScreen(int max_progress)
 {
-	return new FHexenStartScreen(max_progress, func);
+	return new FHexenStartScreen(max_progress);
 }

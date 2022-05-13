@@ -48,18 +48,15 @@
 
 class FHereticStartScreen : public FStartScreen
 {
-	BitmapInfo* StartupBitmap = nullptr;
 	int NotchPos;
 	int ThermX, ThermY, ThermWidth, ThermHeight;
 	int HMsgY, SMsgX;
 public:
-	FHereticStartScreen(int max_progress, InvalidateRectFunc& inv);
-	~FHereticStartScreen()  { FreeBitmap(StartupBitmap); }
+	FHereticStartScreen(int max_progress);
 
 	bool Progress() override;
 	void LoadingStatus(const char *message, int colors) override;
 	void AppendStatusLine(const char *status) override;
-	BitmapInfo* GetBitmap() override { return StartupBitmap; }
 };
 
 
@@ -75,8 +72,8 @@ public:
 //
 //==========================================================================
 
-FHereticStartScreen::FHereticStartScreen(int max_progress, InvalidateRectFunc& inv)
-	: FStartScreen(max_progress, inv)
+FHereticStartScreen::FHereticStartScreen(int max_progress)
+	: FStartScreen(max_progress)
 {
 	int loading_lump = fileSystem.CheckNumForName("LOADING");
 	uint8_t loading_screen[4000];
@@ -126,7 +123,7 @@ bool FHereticStartScreen::Progress()
 			int top = ThermY;
 			int right = notch_pos + ThermX;
 			int bottom = top + ThermHeight;
-			ClearBlock(StartupBitmap, THERM_COLOR, left, top, right - left, bottom - top);
+			ClearBlock(StartupBitmap, TextModePalette[THERM_COLOR], left, top, right - left, bottom - top);
 			NotchPos = notch_pos;
 		}
 	}
@@ -149,7 +146,6 @@ void FHereticStartScreen::LoadingStatus(const char* message, int colors)
 	{
 		DrawChar(StartupBitmap, 17 + x, HMsgY, message[x], colors);
 	}
-	InvalidateRect(StartupBitmap, 17 * 8, HMsgY * 16, (17 + x) * 8, HMsgY * 16 + 16);
 	HMsgY++;
 }
 
@@ -169,12 +165,11 @@ void FHereticStartScreen::AppendStatusLine(const char* status)
 	{
 		DrawChar(StartupBitmap, SMsgX + x, 24, status[x], 0x1f);
 	}
-	InvalidateRect(StartupBitmap, SMsgX * 8, 24 * 16, (SMsgX + x) * 8, 25 * 16);
 	SMsgX += x;
 }
 
 
-FStartScreen* CreateHereticStartScreen(int max_progress, InvalidateRectFunc& func)
+FStartScreen* CreateHereticStartScreen(int max_progress)
 {
-	return new FHereticStartScreen(max_progress, func);
+	return new FHereticStartScreen(max_progress);
 }

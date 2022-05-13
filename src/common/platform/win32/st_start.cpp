@@ -108,13 +108,13 @@ CUSTOM_CVAR(Int, showendoom, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 // Sets the size of the progress bar and displays the startup screen.
 //
 //==========================================================================
-FStartScreen* GetGameStartScreen(int max_progress, InvalidateRectFunc& InvalidateRect);
+FStartScreen* GetGameStartScreen(int max_progress);
 
 FStartupScreen *FStartupScreen::CreateInstance(int max_progress)
 {
 	FStartupScreen *scr = NULL;
 	HRESULT hr = -1;
-	auto gscr = GetGameStartScreen(max_progress, InvalidateRect);
+	auto gscr = GetGameStartScreen(max_progress);
 	if (gscr == NULL)
 	{
 		scr = new FBasicStartupScreen(max_progress, true);
@@ -628,7 +628,6 @@ int RunEndoom()
 
 void ST_Endoom()
 {
-	TexMan.DeleteAll();
 	int code = RunEndoom();
 	throw CExitEvent(code);
 
