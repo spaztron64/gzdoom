@@ -3127,6 +3127,8 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 	S_Init ();
 
 	if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
+
+	TexMan.Init();
 	if (!restart)
 	{
 		if (GameStartupInfo.Type == FStartupInfo::DefaultStartup)
@@ -3179,7 +3181,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 	if (!batchrun) Printf ("Texman.Init: Init texture manager.\n");
 	UpdateUpscaleMask();
 	SpriteFrames.Clear();
-	TexMan.Init([]() { StartScreen->Progress(); }, CheckForHacks);
+	TexMan.AddTextures([]() { StartScreen->Progress(); }, CheckForHacks);
 	PatchTextures();
 	TexAnim.Init();
 	C_InitConback(TexMan.CheckForTexture(gameinfo.BorderFlat, ETextureType::Flat), true, 0.25);

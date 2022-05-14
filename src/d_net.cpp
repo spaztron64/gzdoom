@@ -1600,7 +1600,7 @@ bool D_ArbitrateNetStart (void)
 		data.gotsetup[0] = 0x80;
 	}
 
-	StartScreen->NetInit ("Exchanging game information", 1);
+	StartScreen->NetInit (GStrings("TXT_NET_EXCHANGE"), 1);
 	if (!StartScreen->NetLoop (DoArbitrate, &data))
 	{
 		return false;

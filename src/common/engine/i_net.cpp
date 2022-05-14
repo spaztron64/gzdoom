@@ -75,6 +75,7 @@
 #include "cmdlib.h"
 #include "printf.h"
 #include "i_interface.h"
+#include "gstrings.h"
 
 
 #include "i_net.h"
@@ -708,7 +709,7 @@ bool HostGame (int i)
 
 	doomcom.numnodes = 1;
 
-	StartScreen->NetInit ("Waiting for players", numplayers);
+	StartScreen->NetInit (GStrings("TXT_NET_WAITINGFORPLAYERS"), numplayers);
 
 	// Wait for numplayers-1 different connections
 	if (!StartScreen->NetLoop (Host_CheckForConnects, (void *)(intptr_t)numplayers))
@@ -720,7 +721,7 @@ bool HostGame (int i)
 	// Now inform everyone of all machines involved in the game
 	memset (gotack, 0, sizeof(gotack));
 	StartScreen->NetMessage ("Sending all here.");
-	StartScreen->NetInit ("Done waiting", 1);
+	StartScreen->NetInit (GStrings("TXT_NET_DONEWAITING"), 1);
 
 	if (!StartScreen->NetLoop (Host_SendAllHere, (void *)gotack))
 	{
@@ -777,7 +778,7 @@ bool Guest_ContactHost (void *userdata)
 			if (packet.Message == PRE_CONACK)
 			{
 				StartScreen->NetMessage ("Total players: %d", packet.NumNodes);
-				StartScreen->NetInit ("Waiting for other players", packet.NumNodes);
+				StartScreen->NetInit (GStrings("TXT_NET_WAITFOROTHER"), packet.NumNodes);
 				StartScreen->NetProgress (packet.NumPresent);
 				return true;
 			}
@@ -878,7 +879,7 @@ bool JoinGame (int i)
 
 
 	// Let host know we are here
-	StartScreen->NetInit ("Contacting host", 0);
+	StartScreen->NetInit (GStrings("TXT_NET_CONTACTHOST"), 0);
 
 	if (!StartScreen->NetLoop (Guest_ContactHost, NULL))
 	{

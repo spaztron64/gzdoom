@@ -157,7 +157,7 @@ bool FStrifeStartScreen::Progress()
 			NotchPos = notch_pos;
 		}
 	}
-	return true;
+	return FStartScreen::Progress();
 }
 
 //==========================================================================
