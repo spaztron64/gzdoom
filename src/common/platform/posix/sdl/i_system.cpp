@@ -79,8 +79,6 @@ double PerfToSec, PerfToMillisec;
 CVAR(Bool, con_printansi, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE);
 CVAR(Bool, con_4bitansi, false, CVAR_GLOBALCONFIG|CVAR_ARCHIVE);
 
-extern FStartupScreen *StartScreen;
-
 void I_SetIWADInfo()
 {
 }
@@ -188,41 +186,7 @@ void CalculateCPUSpeed()
 #endif
 }
 
-void CleanProgressBar()
-{
-	if (!isatty(STDOUT_FILENO)) return;
-	struct winsize sizeOfWindow;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &sizeOfWindow);
-	fprintf(stdout,"\0337\033[%d;%dH\033[0J\0338",sizeOfWindow.ws_row, 0);
-	fflush(stdout);
-}
-
 static int ProgressBarCurPos, ProgressBarMaxPos;
-
-void RedrawProgressBar(int CurPos, int MaxPos)
-{
-	if (!isatty(STDOUT_FILENO)) return;
-	CleanProgressBar();
-	struct winsize sizeOfWindow;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &sizeOfWindow);
-	double progVal = std::clamp((double)CurPos / (double)MaxPos,0.0,1.0);
-	int curProgVal = std::clamp(int(sizeOfWindow.ws_col * progVal),0,(int)sizeOfWindow.ws_col);
-
-	char progressBuffer[512];
-	memset(progressBuffer,'.',512);
-	progressBuffer[sizeOfWindow.ws_col - 1] = 0;
-	int lengthOfStr = 0;
-
-	while (curProgVal-- > 0)
-	{
-		progressBuffer[lengthOfStr++] = '=';
-		if (lengthOfStr >= sizeOfWindow.ws_col - 1) break;
-	}
-	fprintf(stdout, "\0337\033[%d;%dH\033[2K[%s\033[%d;%dH]\0338", sizeOfWindow.ws_row, 0, progressBuffer, sizeOfWindow.ws_row, sizeOfWindow.ws_col);
-	fflush(stdout);
-	ProgressBarCurPos = CurPos;
-	ProgressBarMaxPos = MaxPos;
-}
 
 void I_PrintStr(const char *cp)
 {
@@ -278,10 +242,8 @@ void I_PrintStr(const char *cp)
 		}
 	}
 
-	if (StartScreen) CleanProgressBar();
 	fputs(printData.GetChars(),stdout);
 	if (terminal) fputs("\033[0m",stdout);
-	if (StartScreen) RedrawProgressBar(ProgressBarCurPos,ProgressBarMaxPos);
 }
 
 int I_PickIWad (WadStuff *wads, int numwads, bool showwin, int defaultiwad)

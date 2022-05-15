@@ -39,20 +39,7 @@
 #include <functional>
 #include "bitmap.h"
 
-struct BitmapInfoHeader 
-{
-	uint32_t      biSize;
-	int32_t       biWidth;
-	int32_t       biHeight;
-	uint16_t      biPlanes;
-	uint16_t      biBitCount;
-	uint32_t      biCompression;
-	uint32_t      biSizeImage;
-	int32_t       biXPelsPerMeter;
-	int32_t       biYPelsPerMeter;
-	uint32_t      biClrUsed;
-	uint32_t      biClrImportant;
-};
+class FGameTexture;
 
 struct RgbQuad 
 {
@@ -62,11 +49,6 @@ struct RgbQuad
 	uint8_t    rgbReserved;
 };
 
-
-struct BitmapInfo 
-{
-	RgbQuad             bmiColors[1];
-};
 
 extern const RgbQuad TextModePalette[16];
 
@@ -92,7 +74,6 @@ public:
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
 	virtual bool NetInit(const char* message, int numplayers);
-	virtual bool NetMessage(const char* format, ...) { return false; }
 	virtual void NetProgress(int count) 
 	{
 		if (count == 0)
@@ -124,3 +105,6 @@ protected:
 	void DrawNetStatus(int found, int total);
 	void InvalidateTexture();
 };
+
+FStartScreen* GetGameStartScreen(int max_progress);
+extern FStartScreen* StartScreen;

@@ -119,6 +119,7 @@
 #include "hwrenderer/scene/hw_drawinfo.h"
 #include "doomfont.h"
 #include "screenjob.h"
+#include "startscreen.h"
 
 #ifdef __unix__
 #include "i_system.h"  // for SHARE_DIR
@@ -329,6 +330,7 @@ FString lastIWAD;
 int restart = 0;
 bool AppActive = true;
 bool playedtitlemusic;
+FStartScreen* StartScreen;
 
 cycle_t FrameCycles;
 
@@ -3129,34 +3131,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 	if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
 
 	TexMan.Init();
-	if (!restart)
-	{
-		if (GameStartupInfo.Type == FStartupInfo::DefaultStartup)
-		{
-			switch (gameinfo.gametype)
-			{
-			case GAME_Hexen:
-				GameStartupInfo.Type = FStartupInfo::HexenStartup;
-				break;
-
-			case GAME_Heretic:
-				GameStartupInfo.Type = FStartupInfo::HereticStartup;
-				break;
-
-			case GAME_Strife:
-				GameStartupInfo.Type = FStartupInfo::StrifeStartup;
-				break;
-
-			default:
-				break;
-			}
-		}
-		StartScreen = FStartupScreen::CreateInstance (TexMan.GuesstimateNumTextures() + 5);
-	}
-	else
-	{
-		StartScreen = new FStartupScreen(0);
-	}
 
 	CheckCmdLine();
 
@@ -3643,7 +3617,8 @@ int GameMain()
 	I_ShutdownGraphics();
 	I_ShutdownInput();
 	M_SaveDefaultsFinal();
-	DeleteStartupScreen();
+	if (StartScreen) delete StartScreen;
+	StartScreen = nullptr;
 	delete Args;
 	Args = nullptr;
 	return ret;

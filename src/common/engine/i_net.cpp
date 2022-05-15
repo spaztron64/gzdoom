@@ -76,9 +76,12 @@
 #include "printf.h"
 #include "i_interface.h"
 #include "gstrings.h"
+#include "startscreen.h"
 
 
 #include "i_net.h"
+
+void I_NetMessage(const char* const format, ...);
 
 // As per http://support.microsoft.com/kb/q192599/ the standard
 // size for network buffers is 8k.
@@ -293,16 +296,8 @@ void PacketGet (void)
 		if (err == WSAECONNRESET)
 		{ // The remote node aborted unexpectedly, so pretend it sent an exit packet
 
-			if (StartScreen != NULL)
-			{
-				StartScreen->NetMessage ("The connection from %s was dropped.\n",
-					GetPlayerName(node).GetChars());
-			}
-			else
-			{
-				Printf("The connection from %s was dropped.\n",
-					GetPlayerName(node).GetChars());
-			}
+			I_NetMessage("The connection from %s was dropped.\n",
+				GetPlayerName(node).GetChars());
 
 			doomcom.data[0] = 0x80;	// NCMD_EXIT
 			c = 1;
@@ -537,7 +532,7 @@ bool Host_CheckForConnects (void *userdata)
 				if (node == -1)
 				{
 					const uint8_t *s_addr_bytes = (const uint8_t *)&from->sin_addr;
-					StartScreen->NetMessage ("Got extra connect from %d.%d.%d.%d:%d",
+					I_NetMessage("Got extra connect from %d.%d.%d.%d:%d",
 						s_addr_bytes[0], s_addr_bytes[1], s_addr_bytes[2], s_addr_bytes[3],
 						from->sin_port);
 					packet.Message = PRE_ALLFULL;
@@ -550,7 +545,7 @@ bool Host_CheckForConnects (void *userdata)
 				{
 					node = doomcom.numnodes++;
 					sendaddress[node] = *from;
-					StartScreen->NetMessage ("Got connect from node %d.", node);
+					I_NetMessage("Got connect from node %d.", node);
 				}
 
 				// Let the new guest (and everyone else) know we got their message.
@@ -562,7 +557,7 @@ bool Host_CheckForConnects (void *userdata)
 			node = FindNode (from);
 			if (node >= 0)
 			{
-				StartScreen->NetMessage ("Got disconnect from node %d.", node);
+				I_NetMessage("Got disconnect from node %d.", node);
 				doomcom.numnodes--;
 				while (node < doomcom.numnodes)
 				{
@@ -711,26 +706,30 @@ bool HostGame (int i)
 
 	StartScreen->NetInit (GStrings("TXT_NET_WAITINGFORPLAYERS"), numplayers);
 
+#if 0
 	// Wait for numplayers-1 different connections
 	if (!StartScreen->NetLoop (Host_CheckForConnects, (void *)(intptr_t)numplayers))
 	{
 		SendAbort();
 		return false;
 	}
+#endif
 
 	// Now inform everyone of all machines involved in the game
 	memset (gotack, 0, sizeof(gotack));
-	StartScreen->NetMessage ("Sending all here.");
+	I_NetMessage("Sending all here.");
 	StartScreen->NetInit (GStrings("TXT_NET_DONEWAITING"), 1);
 
+#if 0
 	if (!StartScreen->NetLoop (Host_SendAllHere, (void *)gotack))
 	{
 		SendAbort();
 		return false;
 	}
+#endif
 
 	// Now go
-	StartScreen->NetMessage ("Go");
+	I_NetMessage("Go");
 	packet.Fake = PRE_FAKE;
 	packet.Message = PRE_GO;
 	for (node = 1; node < doomcom.numnodes; node++)
@@ -743,7 +742,7 @@ bool HostGame (int i)
 		}
 	}
 
-	StartScreen->NetMessage ("Total players: %d", doomcom.numnodes);
+	I_NetMessage("Total players: %d", doomcom.numnodes);
 
 	doomcom.id = DOOMCOM_ID;
 	doomcom.numplayers = doomcom.numnodes;
@@ -777,7 +776,7 @@ bool Guest_ContactHost (void *userdata)
 		{
 			if (packet.Message == PRE_CONACK)
 			{
-				StartScreen->NetMessage ("Total players: %d", packet.NumNodes);
+				I_NetMessage("Total players: %d", packet.NumNodes);
 				StartScreen->NetInit (GStrings("TXT_NET_WAITFOROTHER"), packet.NumNodes);
 				StartScreen->NetProgress (packet.NumPresent);
 				return true;
@@ -826,7 +825,7 @@ bool Guest_WaitForOthers (void *userdata)
 				doomcom.numnodes = packet.NumNodes + 2;
 				sendplayer[0] = packet.ConsoleNum;	// My player number
 				doomcom.consoleplayer = packet.ConsoleNum;
-				StartScreen->NetMessage ("Console player number: %d", doomcom.consoleplayer);
+				I_NetMessage("Console player number: %d", doomcom.consoleplayer);
 				for (node = 0; node < packet.NumNodes; node++)
 				{
 					sendaddress[node+2].sin_addr.s_addr = packet.machines[node].address;
@@ -840,14 +839,14 @@ bool Guest_WaitForOthers (void *userdata)
 				}
 			}
 
-			StartScreen->NetMessage ("Received All Here, sending ACK.");
+			I_NetMessage("Received All Here, sending ACK.");
 			packet.Fake = PRE_FAKE;
 			packet.Message = PRE_ALLHEREACK;
 			PreSend (&packet, 2, &sendaddress[1]);
 			break;
 
 		case PRE_GO:
-			StartScreen->NetMessage ("Received \"Go.\"");
+			I_NetMessage("Received \"Go.\"");
 			return true;
 
 		case PRE_DISCONNECT:
@@ -881,6 +880,7 @@ bool JoinGame (int i)
 	// Let host know we are here
 	StartScreen->NetInit (GStrings("TXT_NET_CONTACTHOST"), 0);
 
+#if 0
 	if (!StartScreen->NetLoop (Guest_ContactHost, NULL))
 	{
 		SendAbort();
@@ -893,8 +893,9 @@ bool JoinGame (int i)
 		SendAbort();
 		return false;
 	}
+#endif
 
-	StartScreen->NetMessage ("Total players: %d", doomcom.numnodes);
+	I_NetMessage("Total players: %d", doomcom.numnodes);
 
 	doomcom.id = DOOMCOM_ID;
 	doomcom.numplayers = doomcom.numnodes;
@@ -1081,5 +1082,38 @@ const char *neterror (void)
 			mysnprintf (neterr, countof(neterr), "%d", code);
 			return neterr;
 	}
+}
+#endif
+
+//===========================================================================
+//
+// FTTYStartupScreen :: NetMessage
+//
+// Call this between NetInit() and NetDone() instead of Printf() to
+// display messages, because the progress meter is mixed in the same output
+// stream as normal messages.
+//
+//===========================================================================
+
+void I_NetMessage(const char* const format, ...)
+{
+	va_list argptr;
+
+	va_start(argptr, format);
+	VPrintf(PRINT_HIGH, format, argptr);
+	va_end(argptr);
+}
+
+#if 0
+// This was the Linux variant for its TTY start screen. Hopefully not needed anymore
+void I_NetMessage(const char* format, ...)
+{
+	FString str;
+	va_list argptr;
+
+	va_start(argptr, format);
+	str.VFormat(format, argptr);
+	va_end(argptr);
+	fprintf(stderr, "\r%-40s\n", str.GetChars());
 }
 #endif

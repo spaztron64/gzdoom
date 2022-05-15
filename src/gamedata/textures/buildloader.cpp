@@ -163,7 +163,6 @@ void AddTiles(const FString& pathprefix, const void* tiles, FRemapTable *remap)
 
 
 		// reactivate only if the texture counter works here.
-		//StartScreen->Progress();
 
 		if ((picanm[pic] & 63) && (picanm[pic] & 192))
 		{

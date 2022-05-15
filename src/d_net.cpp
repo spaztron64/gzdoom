@@ -69,6 +69,7 @@
 #include "gstrings.h"
 #include "s_music.h"
 #include "screenjob.h"
+#include "startscreen.h"
 
 EXTERN_CVAR (Int, disableautosave)
 EXTERN_CVAR (Int, autosavecount)
@@ -88,6 +89,7 @@ extern short consistancy[MAXPLAYERS][BACKUPTICS];
 enum { NET_PeerToPeer, NET_PacketServer };
 uint8_t NetMode = NET_PeerToPeer;
 
+void I_NetMessage(const char* const format, ...);
 
 
 //
@@ -1452,7 +1454,7 @@ bool DoArbitrate (void *userdata)
 
 				data->playersdetected[0] |= 1 << netbuffer[1];
 
-				StartScreen->NetMessage ("Found %s (node %d, player %d)",
+				I_NetMessage("Found %s (node %d, player %d)",
 						players[netbuffer[1]].userinfo.GetName(),
 						node, netbuffer[1]+1);
 			}
@@ -1601,10 +1603,12 @@ bool D_ArbitrateNetStart (void)
 	}
 
 	StartScreen->NetInit (GStrings("TXT_NET_EXCHANGE"), 1);
-	if (!StartScreen->NetLoop (DoArbitrate, &data))
+#if 0
+	if (!StartAnimation->NetLoop (DoArbitrate, &data))
 	{
 		return false;
 	}
+#endif
 
 	if (consoleplayer == Net_Arbitrator)
 	{

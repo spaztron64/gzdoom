@@ -366,7 +366,7 @@ FStartScreen* GetGameStartScreen(int max_progress)
 			// fall through to the basic startup screen
 		}
 	}
-	return nullptr;
+	return new FStartScreen(max_progress); // todo: provide a proper generic variant.
 }
 
 //==========================================================================
@@ -641,6 +641,7 @@ bool FStartScreen::Progress(void)
 		screen->Update();
 		twod->OnFrameDone();
 	}
+	return true;
 }
 
 FImageSource* CreateStartScreenTexture(FBitmap& srcdata);
@@ -651,7 +652,7 @@ void FStartScreen::InvalidateTexture()
 	{
 		auto imgsource = CreateStartScreenTexture(StartupBitmap);
 		StartupTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
-		StartupTexture->SetScale(1. / Scale, 1. / Scale);
+		StartupTexture->SetScale(1.f / Scale, 1.f / Scale);
 	}
 	else
 	{

@@ -48,12 +48,6 @@ uint8_t* GetHexChar(int codepoint);
 
 void I_GetEvent();	// i_input.h pulls in too much garbage.
 
-void ST_Util_InvalidateRect(BitmapInfo* bitmap_info, int left, int top, int right, int bottom);
-bool ST_Util_CreateStartupWindow();
-
-
-BitmapInfo* StartupBitmap;
-
 // Hexen startup screen
 #define ST_MAX_NOTCHES			32
 #define ST_NOTCH_WIDTH			16

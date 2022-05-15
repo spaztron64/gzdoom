@@ -601,8 +601,6 @@ void RestoreConView()
 	ConWindowHidden = false;
 	ShowWindow (GameTitleWindow, SW_SHOW);
 	I_ShutdownInput ();		// Make sure the mouse pointer is available.
-	// Make sure the progress bar isn't visible.
-	DeleteStartupScreen();
 }
 
 //==========================================================================
@@ -627,10 +625,6 @@ void ShowErrorPane(const char *text)
 		return;
 	}
 
-	if (StartScreen != NULL)	// Ensure that the network pane is hidden.
-	{
-		StartScreen->NetDone();
-	}
 	if (text != NULL)
 	{
 		FStringf caption("Fatal Error - " GAMENAME " %s " X64 " (%s)", GetVersionString(), GetGitTime());
