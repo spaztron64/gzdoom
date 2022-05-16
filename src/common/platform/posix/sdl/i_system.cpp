@@ -78,10 +78,6 @@ double PerfToSec, PerfToMillisec;
 CVAR(Bool, con_printansi, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE);
 CVAR(Bool, con_4bitansi, false, CVAR_GLOBALCONFIG|CVAR_ARCHIVE);
 
-void I_SetIWADInfo()
-{
-}
-
 //
 // I_Error
 //

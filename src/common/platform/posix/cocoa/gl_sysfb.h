@@ -77,9 +77,6 @@ protected:
 	bool m_hiDPI;
 
 	CocoaWindow* m_window;
-
-	int GetTitleBarHeight() const;
-
 };
 
 class SystemGLFrameBuffer : public SystemBaseFrameBuffer

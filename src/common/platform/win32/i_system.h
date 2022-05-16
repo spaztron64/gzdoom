@@ -34,9 +34,6 @@ void I_PaintConsole (void);
 // Print a console string
 void I_PrintStr (const char *cp);
 
-// Set the title string of the startup window
-void I_SetIWADInfo ();
-
 // Pick from multiple IWADs to use
 int I_PickIWad (WadStuff *wads, int numwads, bool queryiwad, int defaultiwad);
 

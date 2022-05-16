@@ -61,12 +61,6 @@ void CalculateCPUSpeed()
 }
 
 
-void I_SetIWADInfo()
-{
-	FConsoleWindow::GetInstance().SetTitleText();
-}
-
-
 void I_PrintStr(const char* const message)
 {
 	FConsoleWindow::GetInstance().AddText(message);

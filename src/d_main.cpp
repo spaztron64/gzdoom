@@ -3333,6 +3333,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 			// Update progress bar
 			//StartScreen->Progress(per_shader_progress);
 		}
+		StartScreen->Progress(max_progress);	// advance progress bar to the end.
 		StartScreen->Render(true);
 		delete StartScreen;
 		StartScreen = NULL;

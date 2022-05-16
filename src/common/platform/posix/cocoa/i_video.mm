@@ -569,7 +569,7 @@ void SystemBaseFrameBuffer::SetWindowSize(int width, int height)
 	}
 
 	win_w = width;
-	win_h = height + GetTitleBarHeight();
+	win_h = height;
 
 	SetMode(false, m_hiDPI);
 
@@ -624,7 +624,7 @@ void SystemBaseFrameBuffer::SetWindowedMode()
 	}
 
 	const int minimumFrameWidth  = VID_MIN_WIDTH;
-	const int minimumFrameHeight = VID_MIN_HEIGHT + GetTitleBarHeight();
+	const int minimumFrameHeight = VID_MIN_HEIGHT;
 	const NSSize minimumFrameSize = NSMakeSize(minimumFrameWidth, minimumFrameHeight);
 	[m_window setMinSize:minimumFrameSize];
 
@@ -637,7 +637,7 @@ void SystemBaseFrameBuffer::SetWindowedMode()
 		win_x = screenSize.origin.x + screenSize.size.width  / 10;
 		win_y = screenSize.origin.y + screenSize.size.height / 10;
 		win_w = screenSize.size.width  * 8 / 10;
-		win_h = screenSize.size.height * 8 / 10 + GetTitleBarHeight();
+		win_h = screenSize.size.height * 8 / 10;
 	}
 
 	const NSRect frameSize = NSMakeRect(win_x, win_y, win_w, win_h);

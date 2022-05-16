@@ -313,18 +313,6 @@ void LayoutMainWindow (HWND hWnd, HWND pane)
 
 //==========================================================================
 //
-// I_SetIWADInfo
-//
-//==========================================================================
-
-void I_SetIWADInfo()
-{
-	// Make the startup banner show itself
-	LayoutMainWindow(Window, NULL);
-}
-
-//==========================================================================
-//
 // LConProc
 //
 // The main window's WndProc during startup. During gameplay, the WndProc
