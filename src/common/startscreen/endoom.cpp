@@ -183,6 +183,10 @@ int RunEndoom()
 			{
 				return 0;
 			}
+			if (ev->type == EV_GUI_Event && (ev->subtype == EV_GUI_KeyDown || ev->subtype == EV_GUI_LButtonDown || ev->subtype == EV_GUI_RButtonDown || ev->subtype == EV_GUI_MButtonDown))
+			{
+				return 0;
+			}
 		}
 	}
 	return 0;

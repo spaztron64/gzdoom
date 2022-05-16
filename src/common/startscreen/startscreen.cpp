@@ -49,6 +49,7 @@
 #include "v_draw.h"
 #include "g_input.h"
 #include "texturemanager.h"
+#include "gi.h"
 
 // Text mode color values
 enum{
@@ -348,15 +349,15 @@ FStartScreen* GetGameStartScreen(int max_progress)
 	{
 		try
 		{
-			if (GameStartupInfo.Type == FStartupInfo::HexenStartup)
+			if (GameStartupInfo.Type == FStartupInfo::HexenStartup || (gameinfo.gametype == GAME_Hexen && GameStartupInfo.Type == FStartupInfo::DefaultStartup))
 			{
 				return CreateHexenStartScreen(max_progress);
 			}
-			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup)
+			else if (GameStartupInfo.Type == FStartupInfo::HereticStartup || (gameinfo.gametype == GAME_Heretic && GameStartupInfo.Type == FStartupInfo::DefaultStartup))
 			{
 				return CreateHereticStartScreen(max_progress);
 			}
-			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup)
+			else if (GameStartupInfo.Type == FStartupInfo::StrifeStartup || (gameinfo.gametype == GAME_Strife && GameStartupInfo.Type == FStartupInfo::DefaultStartup))
 			{
 				return CreateStrifeStartScreen(max_progress);
 			}
@@ -476,13 +477,13 @@ int FStartScreen::DrawChar(FBitmap& screen, double x, double y, unsigned charnum
 
 int FStartScreen::DrawString(FBitmap& screen, double x, double y, const char* text, RgbQuad fg, RgbQuad bg)
 {
-	int oldx = x;
+	double oldx = x;
 	auto str = (const uint8_t*)text;
 	while (auto chr = GetCharFromString(str))
 	{
 		x += DrawChar(screen, x, y, chr, fg, bg);
 	}
-	return x - oldx;
+	return int(x - oldx);
 }
 
 //==========================================================================
@@ -663,8 +664,11 @@ void FStartScreen::Render(bool force)
 		float displaywidth;
 		float displayheight;
 		twod->Begin(screen->GetWidth(), screen->GetHeight());
-		// todo: Get the math right for this.
-		ClearRect(twod, 0, 0, twod->GetWidth(), twod->GetHeight(), 0, PalEntry(255, 0, 0, 0));
+
+		// Weird shit moment: Vulkan does not render the screen clear if there isn't something textured in the buffer before it.
+		DrawTexture(twod, StartupTexture, 0, 0, TAG_END);
+		ClearRect(twod, 0, 0, twod->GetWidth(), twod->GetHeight(), GPalette.BlackIndex, 0);
+
 		if (HeaderTexture)
 		{
 			displaywidth = HeaderTexture->GetDisplayWidth();
