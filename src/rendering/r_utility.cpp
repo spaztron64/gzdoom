@@ -394,7 +394,7 @@ FRenderer* SWRenderer;
 
 void R_Init ()
 {
-	StartScreen->Progress();
+	StartScreen->Progress(1);
 	R_InitTranslationTables ();
 	R_SetViewSize (screenblocks);
 

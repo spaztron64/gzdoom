@@ -59,7 +59,7 @@ class FHexenStartScreen : public FStartScreen
 public:
 	FHexenStartScreen(int max_progress);
 
-	bool DoProgress() override;
+	bool DoProgress(int) override;
 	void DoNetProgress(int count) override;
 	void NetDone() override;
 };
@@ -131,7 +131,7 @@ FHexenStartScreen::FHexenStartScreen(int max_progress)
 //
 //==========================================================================
 
-bool FHexenStartScreen::DoProgress()
+bool FHexenStartScreen::DoProgress(int advance)
 {
 	int notch_pos, x, y;
 
@@ -151,7 +151,7 @@ bool FHexenStartScreen::DoProgress()
 			ST_Sound("StartupTick");
 		}
 	}
-	return FStartScreen::DoProgress();
+	return FStartScreen::DoProgress(advance);
 }
 
 //==========================================================================

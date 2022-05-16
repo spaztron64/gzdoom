@@ -3075,7 +3075,10 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 		V_Init2();
 	}
 	if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
-	StartScreen = GetGameStartScreen(TexMan.GuesstimateNumTextures());
+	int max_progress = TexMan.GuesstimateNumTextures();
+	// this does not work yet.
+	int per_shader_progress = 0;//screen->GetShaderCount()? (max_progress / 10 / screen->GetShaderCount()) : 0;
+	StartScreen = GetGameStartScreen(per_shader_progress > 0? max_progress * 10 / 9 : max_progress + 3);
 
 
 	// [RH] Initialize palette management
@@ -3156,14 +3159,14 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 	if (!batchrun) Printf ("Texman.Init: Init texture manager.\n");
 	UpdateUpscaleMask();
 	SpriteFrames.Clear();
-	TexMan.AddTextures([]() { StartScreen->Progress(); }, CheckForHacks);
+	TexMan.AddTextures([]() { StartScreen->Progress(1); }, CheckForHacks);
 	PatchTextures();
 	TexAnim.Init();
 	C_InitConback(TexMan.CheckForTexture(gameinfo.BorderFlat, ETextureType::Flat), true, 0.25);
 
 	FixWideStatusBar();
 
-	StartScreen->Progress();
+	StartScreen->Progress(1);
 	V_InitFonts();
 	InitDoomFonts();
 	V_LoadTranslations();
@@ -3189,7 +3192,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 		I_FatalError ("No player classes defined");
 	}
 
-	StartScreen->Progress ();
+	StartScreen->Progress (1);
 
 	ParseGLDefs();
 
@@ -3319,8 +3322,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 			autostart = true;
 		}
 
-		delete StartScreen;
-		StartScreen = NULL;
 		S_Sound (CHAN_BODY, 0, "misc/startupdone", 1, ATTN_NONE);
 
 		if (Args->CheckParm("-norun") || batchrun)
@@ -3328,11 +3329,14 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 			return 1337; // special exit
 		}
 
-		//V_Init2();
 		while(!screen->CompileNextShader())
 		{
-			// here we can do some visual updates later
+			// Update progress bar
+			//StartScreen->Progress(per_shader_progress);
 		}
+		StartScreen->Render(true);
+		delete StartScreen;
+		StartScreen = NULL;
 		twod->fullscreenautoaspect = gameinfo.fullscreenautoaspect;
 		// Initialize the size of the 2D drawer so that an attempt to access it outside the draw code won't crash.
 		twod->Begin(screen->GetWidth(), screen->GetHeight());

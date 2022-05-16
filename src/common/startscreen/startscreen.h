@@ -70,8 +70,8 @@ protected:
 public:
 	FStartScreen(int maxp) { MaxPos = maxp; }
 	virtual ~FStartScreen() = default;
-	void Render();
-	bool Progress();
+	void Render(bool force = false);
+	bool Progress(int);
 	void NetProgress(int count);
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
@@ -95,7 +95,7 @@ protected:
 	void CreateHeader();
 	void DrawNetStatus(int found, int total);
 	void ValidateTexture();
-	virtual bool DoProgress();
+	virtual bool DoProgress(int);
 	virtual void DoNetProgress(int count);
 };
 

@@ -55,7 +55,7 @@ class FHereticStartScreen : public FStartScreen
 public:
 	FHereticStartScreen(int max_progress);
 
-	bool DoProgress() override;
+	bool DoProgress(int) override;
 	void LoadingStatus(const char *message, int colors) override;
 	void AppendStatusLine(const char *status) override;
 };
@@ -113,7 +113,7 @@ FHereticStartScreen::FHereticStartScreen(int max_progress)
 //
 //==========================================================================
 
-bool FHereticStartScreen::DoProgress()
+bool FHereticStartScreen::DoProgress(int advance)
 {
 	if (CurPos < MaxPos)
 	{
@@ -129,7 +129,7 @@ bool FHereticStartScreen::DoProgress()
 			StartupTexture->CleanHardwareData(true);
 		}
 	}
-	return FStartScreen::DoProgress();
+	return FStartScreen::DoProgress(advance);
 }
 
 //==========================================================================

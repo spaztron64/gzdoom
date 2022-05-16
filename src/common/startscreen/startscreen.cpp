@@ -617,10 +617,9 @@ bool FStartScreen::NetInit(const char* message, int numplayers)
 //
 //==========================================================================
 
-bool FStartScreen::DoProgress(void)
+bool FStartScreen::DoProgress(int advance)
 {
-	if (CurPos < MaxPos)
-		++CurPos;
+	CurPos = min(CurPos + advance, MaxPos);
 	return true;
 }
 
@@ -637,9 +636,9 @@ void FStartScreen::DoNetProgress(int count)
 	NetTexture->CleanHardwareData();
 }
 
-bool FStartScreen::Progress(void)
+bool FStartScreen::Progress(int advance)
 {
-	bool done = DoProgress();
+	bool done = DoProgress(advance);
 	Render();
 	return done;
 }
@@ -650,11 +649,11 @@ void FStartScreen::NetProgress(int count)
 	Render();
 }
 
-void FStartScreen::Render()
+void FStartScreen::Render(bool force)
 {
 	auto nowtime = I_msTime();
 	// Do not refresh too often. This function gets called a lot more frequently than the screen can update.
-	if (nowtime - screen->FrameTime > 100)
+	if (nowtime - screen->FrameTime > 100 || force)
 	{
 		screen->FrameTime = nowtime;
 		screen->BeginFrame();
