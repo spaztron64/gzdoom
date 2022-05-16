@@ -59,23 +59,23 @@ enum{
 
 const RgbQuad TextModePalette[16] =
 {
-	{  0,  0,  0, 0 },		// 0 black
-	{ MD,  0,  0, 0 },		// 1 blue
-	{  0, MD,  0, 0 },		// 2 green
-	{ MD, MD,  0, 0 },		// 3 cyan
-	{  0,  0, MD, 0 },		// 4 red
-	{ MD,  0, MD, 0 },		// 5 magenta
-	{  0, LO, MD, 0 },		// 6 brown
-	{ MD, MD, MD, 0 },		// 7 light gray
+	{  0,  0,  0, 255 },		// 0 black
+	{ MD,  0,  0, 255 },		// 1 blue
+	{  0, MD,  0, 255 },		// 2 green
+	{ MD, MD,  0, 255 },		// 3 cyan
+	{  0,  0, MD, 255 },		// 4 red
+	{ MD,  0, MD, 255 },		// 5 magenta
+	{  0, LO, MD, 255 },		// 6 brown
+	{ MD, MD, MD, 255 },		// 7 light gray
 
-	{ LO, LO, LO, 0 },		// 8 dark gray
-	{ HI, LO, LO, 0 },		// 9 light blue
-	{ LO, HI, LO, 0 },		// A light green
-	{ HI, HI, LO, 0 },		// B light cyan
-	{ LO, LO, HI, 0 },		// C light red
-	{ HI, LO, HI, 0 },		// D light magenta
-	{ LO, HI, HI, 0 },		// E yellow
-	{ HI, HI, HI, 0 },		// F white
+	{ LO, LO, LO, 255 },		// 8 dark gray
+	{ HI, LO, LO, 255 },		// 9 light blue
+	{ LO, HI, LO, 255 },		// A light green
+	{ HI, HI, LO, 255 },		// B light cyan
+	{ LO, LO, HI, 255 },		// C light red
+	{ HI, LO, HI, 255 },		// D light magenta
+	{ LO, HI, HI, 255 },		// E yellow
+	{ HI, HI, HI, 255 },		// F white
 };
 
 static const uint16_t IBM437ToUnicode[] = {
@@ -660,13 +660,25 @@ void FStartScreen::Render(bool force)
 		twod->ClearClipRect();
 		I_GetEvent();
 		ValidateTexture();
-		float displaywidth = HeaderTexture->GetDisplayWidth();
-		float displayheight = HeaderTexture->GetDisplayHeight() + StartupTexture->GetDisplayHeight();
+		float displaywidth;
+		float displayheight;
 		twod->Begin(screen->GetWidth(), screen->GetHeight());
 		// todo: Get the math right for this.
-		DrawTexture(twod, HeaderTexture, 0, 0, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
-		DrawTexture(twod, StartupTexture, 0, 32, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
-		if (NetMaxPos >= 0) DrawTexture(twod, NetTexture, 0, displayheight - 16, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		ClearRect(twod, 0, 0, twod->GetWidth(), twod->GetHeight(), 0, PalEntry(255, 0, 0, 0));
+		if (HeaderTexture)
+		{
+			displaywidth = HeaderTexture->GetDisplayWidth();
+			displayheight = HeaderTexture->GetDisplayHeight() + StartupTexture->GetDisplayHeight();
+			DrawTexture(twod, HeaderTexture, 0, 0, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+			DrawTexture(twod, StartupTexture, 0, 32, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+			if (NetMaxPos >= 0) DrawTexture(twod, NetTexture, 0, displayheight - 16, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		}
+		else
+		{
+			displaywidth = StartupTexture->GetDisplayWidth();
+			displayheight = StartupTexture->GetDisplayHeight();
+			DrawTexture(twod, StartupTexture, 0, 0, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
+		}
 		twod->End();
 		screen->Update();
 		twod->OnFrameDone();
@@ -683,12 +695,12 @@ void FStartScreen::ValidateTexture()
 		StartupTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
 		StartupTexture->SetScale(1.f / Scale, 1.f / Scale);
 	}
-	if (HeaderTexture == nullptr)
+	if (HeaderTexture == nullptr && HeaderBitmap.GetWidth() > 0)
 	{
 		auto imgsource = CreateStartScreenTexture(HeaderBitmap);
 		HeaderTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
 	}
-	if (NetTexture == nullptr)
+	if (NetTexture == nullptr && NetBitmap.GetWidth() > 0)
 	{
 		auto imgsource = CreateStartScreenTexture(NetBitmap);
 		NetTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);

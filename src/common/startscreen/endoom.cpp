@@ -1,9 +1,11 @@
+
 /*
-** st_start.cpp
+** endoom.cpp
 ** Handles the startup screen.
 **
 **---------------------------------------------------------------------------
 ** Copyright 2006-2007 Randy Heit
+** Copyright 2006-2022 Christoph Oelckers
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -34,17 +36,11 @@
 
 // HEADER FILES ------------------------------------------------------------
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <commctrl.h>
-#include "resource.h"
-
-#include "st_start.h"
+#include "startscreen.h"
 #include "cmdlib.h"
 
 #include "i_system.h"
-#include "i_input.h"
-#include "hardware.h"
+#include "gstrings.h"
 #include "filesystem.h"
 #include "m_argv.h"
 #include "engineerrors.h"
@@ -53,6 +49,10 @@
 #include "startupinfo.h"
 #include "i_interface.h"
 #include "texturemanager.h"
+#include "c_cvars.h"
+#include "i_time.h"
+#include "g_input.h"
+#include "d_eventbase.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -65,28 +65,9 @@
 
 // TYPES -------------------------------------------------------------------
 
-// EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
-
-void RestoreConView();
-void LayoutMainWindow (HWND hWnd, HWND pane);
-int LayoutNetStartPane (HWND pane, int w);
-
-bool ST_Util_CreateStartupWindow ();
-
-// PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
-
-// PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
-
-static INT_PTR CALLBACK NetStartPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-
-// EXTERNAL DATA DECLARATIONS ----------------------------------------------
-
-extern HINSTANCE g_hInst;
-extern HWND Window, ConWindow, ProgressBar, NetStartPane, StartupScreen, GameTitleWindow;
-
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 
-CUSTOM_CVAR(Int, showendoom, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Int, showendoom, 1, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
 	if (self < 0) self = 0;
 	else if (self > 2) self=2;
@@ -96,24 +77,66 @@ CUSTOM_CVAR(Int, showendoom, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 // CODE --------------------------------------------------------------------
 
+class FEndoomScreen : public FStartScreen
+{
+	uint64_t lastUpdateTime;
+	bool blinkstate = false;
+	bool blinking = true;
+	uint8_t endoom_screen[4000];
+
+public:
+	FEndoomScreen(int);
+	void Update();
+};
+
+
 //==========================================================================
 //
-// NetStartPaneProc
+// FHereticStartScreen Constructor
 //
-// DialogProc for the network startup pane. It just waits for somebody to
-// click a button, and the only button available is the abort one.
+// Shows the Heretic startup screen. If the screen doesn't appear to be
+// valid, it returns a failure code in hr.
+//
+// The loading screen is an 80x25 text screen with character data and
+// attributes intermixed, which means it must be exactly 4000 bytes long.
 //
 //==========================================================================
 
-static INT_PTR CALLBACK NetStartPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
+FEndoomScreen::FEndoomScreen(int loading_lump)
+	: FStartScreen(0)
 {
-	if (msg == WM_COMMAND && HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == IDCANCEL)
+	fileSystem.ReadFile(loading_lump, endoom_screen);
+
+	// Draw the loading screen to a bitmap.
+	StartupBitmap.Create(80 * 8, 26 * 16); // line 26 is for our own 'press any key to quit' message.
+	DrawTextScreen(StartupBitmap, endoom_screen);
+	ClearBlock(StartupBitmap, {0, 0, 0, 255}, 0, 25*16, 640, 16);
+	DrawString(StartupBitmap, 0, 25, GStrings("TXT_QUITENDOOM"), { 128, 128, 128 ,255}, { 0, 0, 0, 255});
+	lastUpdateTime = I_msTime();
+	
+	// Does this screen need blinking?
+	for (int i = 0; i < 80*25; ++i)
 	{
-		PostQuitMessage (0);
-		return TRUE;
+		if (endoom_screen[1+i*2] & 0x80)
+		{
+			blinking = true;
+			break;
+		}
 	}
-	return FALSE;
 }
+
+void FEndoomScreen::Update()
+{
+	if (blinking && I_msTime() > lastUpdateTime + BLINK_PERIOD)
+	{
+		lastUpdateTime = I_msTime();
+		UpdateTextBlink (StartupBitmap, endoom_screen, blinkstate);
+		blinkstate = !blinkstate;
+		StartupTexture->CleanHardwareData();
+		Render(true);
+	}
+}
+
 
 //==========================================================================
 //
@@ -125,20 +148,13 @@ static INT_PTR CALLBACK NetStartPaneProc (HWND hDlg, UINT msg, WPARAM wParam, LP
 
 int RunEndoom()
 {
-#if 0
-	if (showendoom == 0 || endoomName.Len() == 0) 
+	if (showendoom == 0 || endoomName.Len() == 0)
 	{
 		return 0;
 	}
 
 	int endoom_lump = fileSystem.CheckNumForFullName (endoomName, true);
-
-	uint8_t endoom_screen[4000];
-	MSG mess;
-	BOOL bRet;
-	bool blinking = false, blinkstate = false;
-	int i;
-
+	
 	if (endoom_lump < 0 || fileSystem.FileLength (endoom_lump) != 4000)
 	{
 		return 0;
@@ -149,65 +165,26 @@ int RunEndoom()
 		// showendoom==2 means to show only lumps from PWADs.
 		return 0;
 	}
-
-	if (!ST_Util_CreateStartupWindow())
-	{
-		return 0;
-	}
-
-	I_ShutdownGraphics ();
-	RestoreConView ();
+	
 	S_StopMusic(true);
+	auto endoom = new FEndoomScreen(endoom_lump);
+	endoom->Render(true);
 
-	fileSystem.ReadFile (endoom_lump, endoom_screen);
-
-	// Make the title banner go away.
-	if (GameTitleWindow != NULL)
+	while(true)
 	{
-		DestroyWindow (GameTitleWindow);
-		GameTitleWindow = NULL;
-	}
-
-	LayoutMainWindow (Window, NULL);
-	InvalidateRect (StartupScreen, NULL, TRUE);
-
-	// Does this screen need blinking?
-	for (i = 0; i < 80*25; ++i)
-	{
-		if (endoom_screen[1+i*2] & 0x80)
+		I_GetEvent();
+		endoom->Update();
+		while (eventtail != eventhead)
 		{
-			blinking = true;
-			break;
-		}
-	}
-	if (blinking && SetTimer (Window, 0x5A15A, BLINK_PERIOD, NULL) == 0)
-	{
-		blinking = false;
-	}
+			event_t *ev = &events[eventtail];
+			eventtail = (eventtail + 1) & (MAXEVENTS - 1);
 
-	// Wait until any key has been pressed or a quit message has been received
-	for (;;)
-	{
-		bRet = GetMessage (&mess, NULL, 0, 0);
-		if (bRet == 0 || bRet == -1 ||	// bRet == 0 means we received WM_QUIT
-			mess.message == WM_KEYDOWN || mess.message == WM_SYSKEYDOWN || mess.message == WM_LBUTTONDOWN)
-		{
-			if (blinking)
+			if (ev->type == EV_KeyDown || ev->type == EV_KeyUp)
 			{
-				KillTimer (Window, 0x5A15A);
+				return 0;
 			}
-			ST_Util_FreeBitmap (StartupBitmap);
-			return int(bRet == 0 ? mess.wParam : 0);
 		}
-		else if (blinking && mess.message == WM_TIMER && mess.hwnd == Window && mess.wParam == 0x5A15A)
-		{
-			ST_Util_UpdateTextBlink (StartupBitmap, endoom_screen, blinkstate);
-			blinkstate = !blinkstate;
-		}
-		TranslateMessage (&mess);
-		DispatchMessage (&mess);
 	}
-#endif
 	return 0;
 }
 
@@ -215,6 +192,5 @@ void ST_Endoom()
 {
 	int code = RunEndoom();
 	throw CExitEvent(code);
-
 }
 

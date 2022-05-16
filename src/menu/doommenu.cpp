@@ -56,7 +56,6 @@
 #include "g_level.h"
 #include "d_event.h"
 #include "p_tick.h"
-#include "st_start.h"
 #include "d_main.h"
 #include "i_system.h"
 #include "doommenu.h"
@@ -65,6 +64,7 @@
 #include "d_player.h"
 #include "teaminfo.h"
 #include "i_time.h"
+#include "startscreen.h"
 #include "hwrenderer/scene/hw_drawinfo.h"
 
 EXTERN_CVAR(Int, cl_gfxlocalization)

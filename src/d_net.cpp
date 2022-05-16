@@ -48,7 +48,6 @@
 #include "p_acs.h"
 #include "p_trace.h"
 #include "a_sharedglobal.h"
-#include "st_start.h"
 #include "teaminfo.h"
 #include "p_conversation.h"
 #include "d_event.h"

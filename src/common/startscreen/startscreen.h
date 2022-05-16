@@ -101,3 +101,5 @@ protected:
 
 FStartScreen* GetGameStartScreen(int max_progress);
 extern FStartScreen* StartScreen;
+
+extern void ST_Endoom();

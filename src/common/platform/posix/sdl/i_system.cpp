@@ -64,7 +64,6 @@
 #include "v_font.h"
 #include "c_cvars.h"
 #include "palutil.h"
-#include "st_start.h"
 
 
 #ifndef NO_GTK

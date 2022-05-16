@@ -70,7 +70,6 @@
 #include "i_system.h"
 #include "m_argv.h"
 #include "m_crc32.h"
-#include "st_start.h"
 #include "engineerrors.h"
 #include "cmdlib.h"
 #include "printf.h"

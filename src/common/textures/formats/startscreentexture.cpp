@@ -41,7 +41,7 @@
 #include "textures.h"
 #include "imagehelpers.h"
 #include "image.h"
-#include "st_start.h"
+#include "startscreen.h"
 
 
 //==========================================================================

@@ -81,7 +81,6 @@
 #include "sbar.h"
 #include "decallib.h"
 #include "version.h"
-#include "st_start.h"
 #include "teaminfo.h"
 #include "hardware.h"
 #include "sbarinfo.h"
