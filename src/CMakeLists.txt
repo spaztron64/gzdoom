@@ -1042,6 +1042,7 @@ set (PCH_SOURCES
 	common/startscreen/startscreen_heretic.cpp
 	common/startscreen/startscreen_hexen.cpp
 	common/startscreen/startscreen_strife.cpp
+	common/startscreen/startscreen_generic.cpp
 	common/startscreen/endoom.cpp
 	common/fonts/singlelumpfont.cpp
 	common/fonts/singlepicfont.cpp

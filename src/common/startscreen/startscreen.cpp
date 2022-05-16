@@ -341,6 +341,7 @@ static const uint16_t IBM437ToUnicode[] = {
 FStartScreen* CreateHexenStartScreen(int max_progress);
 FStartScreen* CreateHereticStartScreen(int max_progress);
 FStartScreen* CreateStrifeStartScreen(int max_progress);
+FStartScreen* CreateGenericStartScreen(int max_progress);
 
 
 FStartScreen* GetGameStartScreen(int max_progress)
@@ -362,12 +363,13 @@ FStartScreen* GetGameStartScreen(int max_progress)
 				return CreateStrifeStartScreen(max_progress);
 			}
 		}
-		catch(const CRecoverableError&)
+		catch(const CRecoverableError& err)
 		{
-			// fall through to the basic startup screen
+			Printf("Error creating start screen: %s\n", err.what());
+			// fall through to the generic startup screen
 		}
 	}
-	return new FStartScreen(max_progress); // todo: provide a proper generic variant.
+	return CreateGenericStartScreen(max_progress);
 }
 
 //==========================================================================
