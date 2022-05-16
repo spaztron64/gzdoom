@@ -424,17 +424,17 @@ void FStartScreen::DrawTextScreen(FBitmap& bitmap_info, const uint8_t* text_scre
 //==========================================================================
 uint8_t* GetHexChar(int codepoint);
 
-int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg)
+int FStartScreen::DrawChar(FBitmap& screen, double x, double y, unsigned charnum, RgbQuad fg, RgbQuad bg)
 {
-	if (x < 0 || y < 0 || y >= screen.GetHeight() - 16) return 8;
+	if (x < 0 || y < 0 || y >= screen.GetHeight() - 16) return 1;
 	static const uint8_t space[17] = { 16 };
 	const RgbQuad color_array[4] = { bg, fg };
 	const uint8_t* src = GetHexChar(charnum);
 	if (!src) src = space;
-	int size = (*src++) >> 1;
-	if (x >= screen.GetWidth() - size) return size;
+	int size = (*src++) == 32? 2 : 1;
+	if (x >= (screen.GetWidth() >> 3) - size) return size;
 	int pitch = screen.GetWidth();
-	RgbQuad* dest = (RgbQuad*)screen.GetPixels() + x * 8 + y * 16 * pitch;
+	RgbQuad* dest = (RgbQuad*)screen.GetPixels() + int(x * 8) + int(y * 16) * pitch;
 
 	for (y = 0; y <16; ++y)
 	{
@@ -466,7 +466,7 @@ int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQ
 	return size;
 }
 
-int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint8_t attrib)
+int FStartScreen::DrawChar(FBitmap& screen, double x, double y, unsigned charnum, uint8_t attrib)
 {
 	const uint8_t bg = (attrib & 0x70) >> 4;
 	const uint8_t fg = attrib & 0x0F;
@@ -474,7 +474,7 @@ int FStartScreen::DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint
 	return DrawChar(screen, x, y, charnum, fgc, bgc);
 }
 
-int FStartScreen::DrawString(FBitmap& screen, int x, int y, const char* text, RgbQuad fg, RgbQuad bg)
+int FStartScreen::DrawString(FBitmap& screen, double x, double y, const char* text, RgbQuad fg, RgbQuad bg)
 {
 	int oldx = x;
 	auto str = (const uint8_t*)text;
@@ -500,8 +500,8 @@ int FStartScreen::SizeOfText(const char* text)
 	while(auto code = GetCharFromString(utext))
 	{
 		const uint8_t* src = GetHexChar(code);
-		if (src && *src == 32) len += 16;
-		else len += 8;
+		if (src && *src == 32) len += 2;
+		else len ++;
 	}
 	return len;
 }
@@ -568,7 +568,7 @@ void FStartScreen::CreateHeader()
 	fcolor.rgbReserved = 255;
 	ClearBlock(HeaderBitmap, bcolor, 0, 0, HeaderBitmap.GetWidth(), HeaderBitmap.GetHeight());
 	int textlen = SizeOfText(GameStartupInfo.Name);
-	DrawString(HeaderBitmap, (HeaderBitmap.GetWidth() - textlen) >> 1, 8, GameStartupInfo.Name, fcolor, bcolor);
+	DrawString(HeaderBitmap, (HeaderBitmap.GetWidth() >> 4) - (textlen >> 1), 0.5, GameStartupInfo.Name, fcolor, bcolor);
 	NetBitmap.Create(StartupBitmap.GetWidth() * Scale, 16);
 }
 
@@ -589,7 +589,7 @@ void FStartScreen::DrawNetStatus(int found, int total)
 	char of[10];
 	mysnprintf(of, 10, "%d/%d", found, total);
 	int siz = SizeOfText(of);
-	DrawString(NetBitmap, NetBitmap.GetWidth() - SizeOfText(of), 0, of, gray, black);
+	DrawString(NetBitmap, (NetBitmap.GetWidth() >> 3) - siz, 0, of, gray, black);
 }
 
 //==========================================================================
@@ -617,22 +617,53 @@ bool FStartScreen::NetInit(const char* message, int numplayers)
 //
 //==========================================================================
 
-bool FStartScreen::Progress(void)
+bool FStartScreen::DoProgress(void)
 {
 	if (CurPos < MaxPos)
 		++CurPos;
+	return true;
+}
 
+void FStartScreen::DoNetProgress(int count)
+{
+	if (count == 0)
+	{
+		NetCurPos++;
+	}
+	else if (count > 0)
+	{
+		NetCurPos = count;
+	}
+	NetTexture->CleanHardwareData();
+}
+
+bool FStartScreen::Progress(void)
+{
+	bool done = DoProgress();
+	Render();
+	return done;
+}
+
+void FStartScreen::NetProgress(int count)
+{
+	DoNetProgress(count);
+	Render();
+}
+
+void FStartScreen::Render()
+{
 	auto nowtime = I_msTime();
 	// Do not refresh too often. This function gets called a lot more frequently than the screen can update.
-	if (nowtime - screen->FrameTime > 33)
+	if (nowtime - screen->FrameTime > 100)
 	{
 		screen->FrameTime = nowtime;
 		screen->BeginFrame();
 		twod->ClearClipRect();
 		I_GetEvent();
-		InvalidateTexture();
+		ValidateTexture();
 		float displaywidth = HeaderTexture->GetDisplayWidth();
 		float displayheight = HeaderTexture->GetDisplayHeight() + StartupTexture->GetDisplayHeight();
+		twod->Begin(screen->GetWidth(), screen->GetHeight());
 		// todo: Get the math right for this.
 		DrawTexture(twod, HeaderTexture, 0, 0, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
 		DrawTexture(twod, StartupTexture, 0, 32, DTA_VirtualWidthF, displaywidth, DTA_VirtualHeightF, displayheight, TAG_END);
@@ -641,22 +672,17 @@ bool FStartScreen::Progress(void)
 		screen->Update();
 		twod->OnFrameDone();
 	}
-	return true;
 }
 
 FImageSource* CreateStartScreenTexture(FBitmap& srcdata);
 
-void FStartScreen::InvalidateTexture()
+void FStartScreen::ValidateTexture()
 {
 	if (StartupTexture == nullptr)
 	{
 		auto imgsource = CreateStartScreenTexture(StartupBitmap);
 		StartupTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
 		StartupTexture->SetScale(1.f / Scale, 1.f / Scale);
-	}
-	else
-	{
-		StartupTexture->CleanHardwareData(true);
 	}
 	if (HeaderTexture == nullptr)
 	{
@@ -667,10 +693,6 @@ void FStartScreen::InvalidateTexture()
 	{
 		auto imgsource = CreateStartScreenTexture(NetBitmap);
 		NetTexture = MakeGameTexture(new FImageTexture(imgsource), nullptr, ETextureType::Override);
-	}
-	else
-	{
-		NetTexture->CleanHardwareData(true);
 	}
 }
 

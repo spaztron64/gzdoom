@@ -36,6 +36,7 @@
 #include "startscreen.h"
 #include "filesystem.h"
 #include "printf.h"
+#include "texturemanager.h"
 
 
 // Heretic startup screen
@@ -54,7 +55,7 @@ class FHereticStartScreen : public FStartScreen
 public:
 	FHereticStartScreen(int max_progress);
 
-	bool Progress() override;
+	bool DoProgress() override;
 	void LoadingStatus(const char *message, int colors) override;
 	void AppendStatusLine(const char *status) override;
 };
@@ -112,7 +113,7 @@ FHereticStartScreen::FHereticStartScreen(int max_progress)
 //
 //==========================================================================
 
-bool FHereticStartScreen::Progress()
+bool FHereticStartScreen::DoProgress()
 {
 	if (CurPos < MaxPos)
 	{
@@ -125,9 +126,10 @@ bool FHereticStartScreen::Progress()
 			int bottom = top + ThermHeight;
 			ClearBlock(StartupBitmap, TextModePalette[THERM_COLOR], left, top, right - left, bottom - top);
 			NotchPos = notch_pos;
+			StartupTexture->CleanHardwareData(true);
 		}
 	}
-	return FStartScreen::Progress();
+	return FStartScreen::DoProgress();
 }
 
 //==========================================================================
@@ -147,6 +149,8 @@ void FHereticStartScreen::LoadingStatus(const char* message, int colors)
 		DrawChar(StartupBitmap, 17 + x, HMsgY, message[x], colors);
 	}
 	HMsgY++;
+	StartupTexture->CleanHardwareData(true);
+	Render();
 }
 
 //==========================================================================
@@ -166,6 +170,8 @@ void FHereticStartScreen::AppendStatusLine(const char* status)
 		DrawChar(StartupBitmap, SMsgX + x, 24, status[x], 0x1f);
 	}
 	SMsgX += x;
+	StartupTexture->CleanHardwareData(true);
+	Render();
 }
 
 

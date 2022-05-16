@@ -849,6 +849,7 @@ bool FShaderCollection::CompileNextShader()
 		mCompileIndex++;
 		if (mCompileIndex >= MAX_EFFECTS)
 		{
+			mCompileState = -1;
 			return true;
 		}
 	}

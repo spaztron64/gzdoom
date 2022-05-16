@@ -75,7 +75,7 @@ class FStrifeStartScreen : public FStartScreen
 public:
 	FStrifeStartScreen(int max_progress);
 
-	bool Progress() override;
+	bool DoProgress() override;
 protected:
 	void DrawStuff(int old_laser, int new_laser);
 
@@ -144,7 +144,7 @@ FStrifeStartScreen::FStrifeStartScreen(int max_progress)
 //
 //==========================================================================
 
-bool FStrifeStartScreen::Progress()
+bool FStrifeStartScreen::DoProgress()
 {
 	int notch_pos;
 
@@ -157,7 +157,7 @@ bool FStrifeStartScreen::Progress()
 			NotchPos = notch_pos;
 		}
 	}
-	return FStartScreen::Progress();
+	return FStartScreen::DoProgress();
 }
 
 //==========================================================================

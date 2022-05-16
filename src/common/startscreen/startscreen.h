@@ -70,21 +70,12 @@ protected:
 public:
 	FStartScreen(int maxp) { MaxPos = maxp; }
 	virtual ~FStartScreen() = default;
-	virtual bool Progress();
+	void Render();
+	bool Progress();
+	void NetProgress(int count);
 	virtual void LoadingStatus(const char *message, int colors) {}
 	virtual void AppendStatusLine(const char *status) {}
 	virtual bool NetInit(const char* message, int numplayers);
-	virtual void NetProgress(int count) 
-	{
-		if (count == 0)
-		{
-			NetCurPos++;
-		}
-		else if (count > 0)
-		{
-			NetCurPos = count;
-		}
-	}
 	virtual void NetDone() {}
 	virtual void NetTick() {}
 	FBitmap& GetBitmap() { return StartupBitmap; }
@@ -95,15 +86,17 @@ protected:
 	void ClearBlock(FBitmap& bitmap_info, RgbQuad fill, int x, int y, int bytewidth, int height);
 	FBitmap AllocTextBitmap();
 	void DrawTextScreen(FBitmap& bitmap_info, const uint8_t* text_screen);
-	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, uint8_t attrib);
-	int DrawChar(FBitmap& screen, int x, int y, unsigned charnum, RgbQuad fg, RgbQuad bg);
-	int DrawString(FBitmap& screen, int x, int y, const char* text, RgbQuad fg, RgbQuad bg);
+	int DrawChar(FBitmap& screen, double x, double y, unsigned charnum, uint8_t attrib);
+	int DrawChar(FBitmap& screen, double x, double y, unsigned charnum, RgbQuad fg, RgbQuad bg);
+	int DrawString(FBitmap& screen, double x, double y, const char* text, RgbQuad fg, RgbQuad bg);
 	void UpdateTextBlink(FBitmap& bitmap_info, const uint8_t* text_screen, bool on);
 	void ST_Sound(const char* sndname);
 	int SizeOfText(const char* text);
 	void CreateHeader();
 	void DrawNetStatus(int found, int total);
-	void InvalidateTexture();
+	void ValidateTexture();
+	virtual bool DoProgress();
+	virtual void DoNetProgress(int count);
 };
 
 FStartScreen* GetGameStartScreen(int max_progress);

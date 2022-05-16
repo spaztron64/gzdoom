@@ -3072,8 +3072,22 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 		V_InitScreenSize();
 		// This allocates a dummy framebuffer as a stand-in until V_Init2 is called.
 		V_InitScreen ();
+		V_Init2();
 	}
+	if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
+	StartScreen = GetGameStartScreen(TexMan.GuesstimateNumTextures());
 
+
+	// [RH] Initialize palette management
+	InitPalette ();
+	if (restart)
+	{
+		// Update screen palette when restarting
+		screen->UpdatePalette();
+	}
+	TexMan.Init();
+	StartScreen->Render();
+	
 	GameConfig->DoKeySetup(gameinfo.ConfigName);
 
 	// Now that wads are loaded, define mod-specific cvars.
@@ -3106,15 +3120,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 		Printf("%s", ci.GetChars());
 	}
 
-	// [RH] Initialize palette management
-	InitPalette ();
-		
-	if (restart)
-	{
-		// Update screen palette when restarting
-		screen->UpdatePalette();
-	}
-
 	// Base systems have been inited; enable cvar callbacks
 	FBaseCVar::EnableCallbacks ();
 	
@@ -3127,10 +3132,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 
 	if (!batchrun) Printf ("S_Init: Setting up sound.\n");
 	S_Init ();
-
-	if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
-
-	TexMan.Init();
 
 	CheckCmdLine();
 
@@ -3327,7 +3328,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, TArray<FString>& allwads, TArr
 			return 1337; // special exit
 		}
 
-		V_Init2();
+		//V_Init2();
 		while(!screen->CompileNextShader())
 		{
 			// here we can do some visual updates later

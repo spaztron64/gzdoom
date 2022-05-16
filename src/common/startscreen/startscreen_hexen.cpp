@@ -39,6 +39,7 @@
 #include "startupinfo.h"
 #include "s_music.h"
 #include "image.h"
+#include "texturemanager.h"
 
 // Hexen startup screen
 #define ST_PROGRESS_X			64			// Start of notches x screen pos.
@@ -58,8 +59,8 @@ class FHexenStartScreen : public FStartScreen
 public:
 	FHexenStartScreen(int max_progress);
 
-	bool Progress() override;
-	void NetProgress(int count) override;
+	bool DoProgress() override;
+	void DoNetProgress(int count) override;
 	void NetDone() override;
 };
 
@@ -92,7 +93,7 @@ FHexenStartScreen::FHexenStartScreen(int max_progress)
 	auto iBackground = FImageSource::GetImage(startup_lump, false);
 	auto iNetNotchBits = FImageSource::GetImage(netnotch_lump, false);
 	auto iNotchBits = FImageSource::GetImage(notch_lump, false);
-	if (!iBackground || !iNetNotchBits || iNotchBits || iBackground->GetWidth() != 640 || iBackground->GetHeight() != 480)
+	if (!iBackground || !iNetNotchBits || !iNotchBits || iBackground->GetWidth() != 640 || iBackground->GetHeight() != 480)
 	{
 		I_Error("Start screen assets missing");
 	}
@@ -130,7 +131,7 @@ FHexenStartScreen::FHexenStartScreen(int max_progress)
 //
 //==========================================================================
 
-bool FHexenStartScreen::Progress()
+bool FHexenStartScreen::DoProgress()
 {
 	int notch_pos, x, y;
 
@@ -146,10 +147,11 @@ bool FHexenStartScreen::Progress()
 				y = ST_PROGRESS_Y;
 				StartupBitmap.Blit(x, y, NotchBits);
 			}
+			StartupTexture->CleanHardwareData(true);
 			ST_Sound("StartupTick");
 		}
 	}
-	return FStartScreen::Progress();
+	return FStartScreen::DoProgress();
 }
 
 //==========================================================================
@@ -160,7 +162,7 @@ bool FHexenStartScreen::Progress()
 //
 //==========================================================================
 
-void FHexenStartScreen::NetProgress(int count)
+void FHexenStartScreen::DoNetProgress(int count)
 {
 	int oldpos = NetCurPos;
 	int x, y;
@@ -179,6 +181,7 @@ void FHexenStartScreen::NetProgress(int count)
 			StartupBitmap.Blit(x, y, NetNotchBits);
 		}
 		ST_Sound("misc/netnotch");
+		StartupTexture->CleanHardwareData(true);
 	}
 }
 
